@@ -47,11 +47,30 @@ function hasMutationRatchet(repo: string): boolean {
   return names.some((n) => fileExists(join(repo, n)));
 }
 
+// Does any CI workflow reference `needle` (i.e. actually run that guard)?
+function workflowReferences(repo: string, needle: string): boolean {
+  const dir = join(repo, ".github", "workflows");
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) return false;
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
+    .some((f) => readFileSync(join(dir, f), "utf8").includes(needle));
+}
+
 function hasSemgrepEscapeHatch(repo: string): boolean {
   if (dirHasEntries(join(repo, ".semgrep"))) return true;
-  return ["semgrep.yml", "semgrep.yaml", ".semgrep.yml", ".semgrep.yaml"].some((n) =>
-    fileExists(join(repo, n)),
-  );
+  const configNames = [
+    "semgrep.yml",
+    "semgrep.yaml",
+    ".semgrep.yml",
+    ".semgrep.yaml",
+    // Calibrated against Obol: the escape-hatch config can live under tools/.
+    "tools/semgrep-escape-hatches.yml",
+    "tools/semgrep.yml",
+    "tools/semgrep.yaml",
+  ];
+  if (configNames.some((n) => fileExists(join(repo, n)))) return true;
+  // Strongest signal: a workflow actually runs semgrep.
+  return workflowReferences(repo, "semgrep");
 }
 
 function hasProtectedSet(repo: string): boolean {
@@ -61,11 +80,7 @@ function hasProtectedSet(repo: string): boolean {
 }
 
 function hasPreconditionCheck(repo: string): boolean {
-  const dir = join(repo, ".github", "workflows");
-  if (!existsSync(dir) || !statSync(dir).isDirectory()) return false;
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
-    .some((f) => readFileSync(join(dir, f), "utf8").includes("devloop-precondition-check"));
+  return workflowReferences(repo, "devloop-precondition-check");
 }
 
 const DETECTORS: Record<GuardianId, (repo: string) => boolean> = {

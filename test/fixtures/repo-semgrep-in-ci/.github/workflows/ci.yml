@@ -1,0 +1,8 @@
+name: ci
+jobs:
+  escape-hatches:
+    steps:
+      - run: semgrep --config tools/semgrep-escape-hatches.yml --error services packages
+  gate:
+    steps:
+      - run: npx devloop-precondition-check

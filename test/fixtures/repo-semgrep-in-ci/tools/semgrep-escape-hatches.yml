@@ -1,0 +1,6 @@
+rules:
+  - id: no-new-skip
+    pattern: .skip
+    message: escape hatch
+    severity: ERROR
+    languages: [typescript]

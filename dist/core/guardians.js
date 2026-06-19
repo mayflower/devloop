@@ -30,21 +30,38 @@ function hasMutationRatchet(repo) {
     ];
     return names.some((n) => fileExists(join(repo, n)));
 }
-function hasSemgrepEscapeHatch(repo) {
-    if (dirHasEntries(join(repo, ".semgrep")))
-        return true;
-    return ["semgrep.yml", "semgrep.yaml", ".semgrep.yml", ".semgrep.yaml"].some((n) => fileExists(join(repo, n)));
-}
-function hasProtectedSet(repo) {
-    return ["CODEOWNERS", join(".github", "CODEOWNERS"), join("docs", "CODEOWNERS")].some((n) => fileExists(join(repo, n)));
-}
-function hasPreconditionCheck(repo) {
+// Does any CI workflow reference `needle` (i.e. actually run that guard)?
+function workflowReferences(repo, needle) {
     const dir = join(repo, ".github", "workflows");
     if (!existsSync(dir) || !statSync(dir).isDirectory())
         return false;
     return readdirSync(dir)
         .filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"))
-        .some((f) => readFileSync(join(dir, f), "utf8").includes("devloop-precondition-check"));
+        .some((f) => readFileSync(join(dir, f), "utf8").includes(needle));
+}
+function hasSemgrepEscapeHatch(repo) {
+    if (dirHasEntries(join(repo, ".semgrep")))
+        return true;
+    const configNames = [
+        "semgrep.yml",
+        "semgrep.yaml",
+        ".semgrep.yml",
+        ".semgrep.yaml",
+        // Calibrated against Obol: the escape-hatch config can live under tools/.
+        "tools/semgrep-escape-hatches.yml",
+        "tools/semgrep.yml",
+        "tools/semgrep.yaml",
+    ];
+    if (configNames.some((n) => fileExists(join(repo, n))))
+        return true;
+    // Strongest signal: a workflow actually runs semgrep.
+    return workflowReferences(repo, "semgrep");
+}
+function hasProtectedSet(repo) {
+    return ["CODEOWNERS", join(".github", "CODEOWNERS"), join("docs", "CODEOWNERS")].some((n) => fileExists(join(repo, n)));
+}
+function hasPreconditionCheck(repo) {
+    return workflowReferences(repo, "devloop-precondition-check");
 }
 const DETECTORS = {
     "mutation-ratchet": hasMutationRatchet,

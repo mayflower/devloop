@@ -34,6 +34,13 @@ test("missing precondition-check binding anchor -> reports precondition-check", 
   expect(r.missing).toContain("precondition-check");
 });
 
+test("semgrep wired via CI (Obol-style tools/semgrep-*.yml, no .semgrep dir) is detected", () => {
+  // Calibration against real Obol: the escape-hatch guard runs in CI from tools/, not .semgrep/.
+  const r = checkGuardians(fx("repo-semgrep-in-ci"));
+  expect(r.missing).not.toContain("semgrep-escape-hatch");
+  expect(r).toEqual({ ok: true, missing: [] });
+});
+
 test("each missing-fixture reports exactly its one missing guardian", () => {
   expect(checkGuardians(fx("repo-missing-stryker")).missing).toEqual(["mutation-ratchet"]);
   expect(checkGuardians(fx("repo-missing-semgrep")).missing).toEqual(["semgrep-escape-hatch"]);
