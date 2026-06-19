@@ -1,0 +1,4 @@
+* @team
+/stryker.conf.json @owners
+/.semgrep/ @owners
+/constitution.md @owners
