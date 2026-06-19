@@ -1,0 +1,110 @@
+// The driver state machine (design §3/§8) — the heart of the orchestration.
+// PURE function: given the current state, return the next action. The Slash-Command is
+// merely its executor; the safety-relevant invariants live HERE and are unit-tested.
+//
+// Invariants proven by driver.test.ts (1:1 with the §8 Definition of Done):
+//   1. Guardians missing  -> REFUSE_GUARDIANS (no path loops without the guardians).
+//   2. Spec-review stop is not skippable (no branch leaves "specified" without the token).
+//   3. T3-merge stop is not skippable; T0/T1 auto-merge at green.
+//   4. The driver NEVER produces an artifact inline — SPAWN_STATION is the only producer.
+//   5. The back-edge feedback is a defect SIGNAL, never a solution (type-enforced).
+//   6. T3's irreversible step stays human-gated (the auto-loop runs only on reversible
+//      pre-stages; merge is the t3-merge stop).
+
+import type { Tier } from "./tier.js";
+import type { Stop } from "./types.js";
+import { nextLoopDecision, type LoopState, type LoopParams } from "./loop.js";
+
+export type Station = "specify" | "spec-to-tests" | "implement" | "critic";
+
+export type Phase =
+  | "init"
+  | "specified"
+  | "tests-written"
+  | "implemented"
+  | "gated"
+  | "merge-pending";
+
+export type Action =
+  | { kind: "REFUSE_GUARDIANS"; missing: string[] }
+  | { kind: "SPAWN_STATION"; station: Station }
+  | { kind: "RUN_GATES" }
+  | { kind: "STOP_FOR_HUMAN"; stop: Stop }
+  | { kind: "RE_GEN"; feedback: "defect-signal"; freshContext: boolean }
+  | { kind: "ESCALATE"; reason: string }
+  | { kind: "DONE" };
+
+export interface DriverState {
+  tier: Tier;
+  guardians: { ok: boolean; missing: string[] };
+  phase: Phase;
+  humanApprovals: Partial<Record<Stop, boolean>>; // derived from verifyApproval()=="ok", NOT prompt-set
+  gateVerdict?: "green" | "red";
+  loop?: LoopState;
+  loopParams?: LoopParams;
+}
+
+function handleRedGate(state: DriverState): Action {
+  if (!state.loop || !state.loopParams) {
+    return { kind: "ESCALATE", reason: "loop-params-required" };
+  }
+  const decision = nextLoopDecision(state.loop, state.loopParams);
+  switch (decision) {
+    case "RE_GEN":
+      return { kind: "RE_GEN", feedback: "defect-signal", freshContext: false };
+    case "FRESH_CONTEXT_RETRY":
+      return { kind: "RE_GEN", feedback: "defect-signal", freshContext: true };
+    default:
+      return { kind: "ESCALATE", reason: decision };
+  }
+}
+
+function handleMerge(state: DriverState): Action {
+  switch (state.tier) {
+    case "T0":
+    case "T1":
+      return { kind: "DONE" }; // auto-merge at green
+    case "T2":
+      return state.humanApprovals["merge-review"]
+        ? { kind: "DONE" }
+        : { kind: "STOP_FOR_HUMAN", stop: "merge-review" };
+    case "T3":
+      return state.humanApprovals["t3-merge"]
+        ? { kind: "DONE" }
+        : { kind: "STOP_FOR_HUMAN", stop: "t3-merge" };
+  }
+}
+
+export function nextAction(state: DriverState): Action {
+  // Invariant 1: without the guardians, the autonomous loop is refused outright.
+  if (!state.guardians.ok) {
+    return { kind: "REFUSE_GUARDIANS", missing: state.guardians.missing };
+  }
+
+  switch (state.phase) {
+    case "init":
+      return { kind: "SPAWN_STATION", station: "specify" };
+
+    case "specified":
+      // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust).
+      return state.humanApprovals["spec-review"]
+        ? { kind: "SPAWN_STATION", station: "spec-to-tests" }
+        : { kind: "STOP_FOR_HUMAN", stop: "spec-review" };
+
+    case "tests-written":
+      return { kind: "SPAWN_STATION", station: "implement" };
+
+    case "implemented":
+      return { kind: "RUN_GATES" };
+
+    case "gated":
+      // Green -> adversarial critic; red -> back-edge (loop on the reversible pre-stage).
+      return state.gateVerdict === "green"
+        ? { kind: "SPAWN_STATION", station: "critic" }
+        : handleRedGate(state);
+
+    case "merge-pending":
+      // Invariant 3 & 6: T3 merge is human-gated; T0/T1 auto-merge.
+      return handleMerge(state);
+  }
+}

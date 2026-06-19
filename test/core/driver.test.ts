@@ -1,0 +1,163 @@
+import { test, expect } from "vitest";
+import { nextAction, type DriverState, type Action } from "../../src/core/driver.js";
+import type { LoopState, LoopParams } from "../../src/core/loop.js";
+
+const okGuards = { ok: true, missing: [] as string[] };
+const loop: LoopState = {
+  iteration: 1,
+  errorCounts: [10, 7],
+  gateChangedNotCode: false,
+  freshContextUsed: false,
+};
+const loopParams: LoopParams = { maxIter: 5, requireStrictlyDecreasing: true };
+
+const base = (over: Partial<DriverState> = {}): DriverState => ({
+  tier: "T2",
+  guardians: okGuards,
+  phase: "init",
+  humanApprovals: {},
+  ...over,
+});
+
+// --- Invariant 1: guardian precondition ---------------------------------------
+test("refuses the autonomous loop when guardians are missing (any phase)", () => {
+  const s = base({
+    tier: "T1",
+    guardians: { ok: false, missing: ["mutation-ratchet"] },
+    phase: "implemented",
+  });
+  expect(nextAction(s)).toEqual({ kind: "REFUSE_GUARDIANS", missing: ["mutation-ratchet"] });
+});
+
+test("guardian refusal has top priority even at init", () => {
+  const s = base({ guardians: { ok: false, missing: ["precondition-check"] }, phase: "init" });
+  expect(nextAction(s).kind).toBe("REFUSE_GUARDIANS");
+});
+
+// --- Forward chain ------------------------------------------------------------
+test("init spawns the specify station", () => {
+  expect(nextAction(base({ phase: "init" }))).toEqual({ kind: "SPAWN_STATION", station: "specify" });
+});
+
+// --- Invariant 2: spec-review stop is not skippable ---------------------------
+test("spec-review stop is not skippable", () => {
+  const s = base({ phase: "specified", humanApprovals: {} });
+  expect(nextAction(s)).toEqual({ kind: "STOP_FOR_HUMAN", stop: "spec-review" });
+});
+
+test("after spec-review approval, the (independent) test agent is spawned", () => {
+  const s = base({ phase: "specified", humanApprovals: { "spec-review": true } });
+  expect(nextAction(s)).toEqual({ kind: "SPAWN_STATION", station: "spec-to-tests" });
+});
+
+test("spec-review is required for EVERY tier (even T0/T1)", () => {
+  for (const tier of ["T0", "T1", "T2", "T3"] as const) {
+    expect(nextAction(base({ tier, phase: "specified", humanApprovals: {} }))).toEqual({
+      kind: "STOP_FOR_HUMAN",
+      stop: "spec-review",
+    });
+  }
+});
+
+test("tests-written spawns implement; implemented runs the gates", () => {
+  const appr = { "spec-review": true } as const;
+  expect(nextAction(base({ phase: "tests-written", humanApprovals: appr }))).toEqual({
+    kind: "SPAWN_STATION",
+    station: "implement",
+  });
+  expect(nextAction(base({ phase: "implemented", humanApprovals: appr }))).toEqual({
+    kind: "RUN_GATES",
+  });
+});
+
+// --- Back-edge --------------------------------------------------------------
+test("green gate proceeds to the critic", () => {
+  const s = base({ phase: "gated", gateVerdict: "green", humanApprovals: { "spec-review": true } });
+  expect(nextAction(s)).toEqual({ kind: "SPAWN_STATION", station: "critic" });
+});
+
+test("red gate re-generates with a defect signal (feedback is signal, not solution)", () => {
+  const s = base({ phase: "gated", gateVerdict: "red", loop, loopParams });
+  const a = nextAction(s);
+  expect(a.kind).toBe("RE_GEN");
+  if (a.kind === "RE_GEN") expect(a.feedback).toBe("defect-signal");
+});
+
+test("gate tampering escalates (reward-hacking alarm)", () => {
+  const s = base({
+    phase: "gated",
+    gateVerdict: "red",
+    loop: { ...loop, gateChangedNotCode: true },
+    loopParams,
+  });
+  const a = nextAction(s);
+  expect(a.kind).toBe("ESCALATE");
+});
+
+// --- Invariant 3: T3-merge stop not skippable; T0/T1 auto-merge -------------
+test("T3 merge stop is not skippable", () => {
+  const s = base({ tier: "T3", phase: "merge-pending", gateVerdict: "green", humanApprovals: { "spec-review": true } });
+  expect(nextAction(s)).toEqual({ kind: "STOP_FOR_HUMAN", stop: "t3-merge" });
+});
+
+test("T3 proceeds to DONE only with the t3-merge token", () => {
+  const s = base({
+    tier: "T3",
+    phase: "merge-pending",
+    gateVerdict: "green",
+    humanApprovals: { "spec-review": true, "t3-merge": true },
+  });
+  expect(nextAction(s)).toEqual({ kind: "DONE" });
+});
+
+test("T0/T1 auto-merge at green (Dark Factory full throttle)", () => {
+  for (const tier of ["T0", "T1"] as const) {
+    const s = base({ tier, phase: "merge-pending", gateVerdict: "green", humanApprovals: { "spec-review": true } });
+    expect(nextAction(s)).toEqual({ kind: "DONE" });
+  }
+});
+
+test("T2 stops for the required reviewer before merge", () => {
+  const s = base({ tier: "T2", phase: "merge-pending", gateVerdict: "green", humanApprovals: { "spec-review": true } });
+  expect(nextAction(s)).toEqual({ kind: "STOP_FOR_HUMAN", stop: "merge-review" });
+});
+
+// --- Invariant 4: the driver never produces artifacts inline ----------------
+test("nextAction never produces artifacts inline (SPAWN_STATION is the only producer)", () => {
+  const ALLOWED: Action["kind"][] = [
+    "REFUSE_GUARDIANS",
+    "SPAWN_STATION",
+    "RUN_GATES",
+    "STOP_FOR_HUMAN",
+    "RE_GEN",
+    "ESCALATE",
+    "DONE",
+  ];
+  const phases: DriverState["phase"][] = [
+    "init",
+    "specified",
+    "tests-written",
+    "implemented",
+    "gated",
+    "merge-pending",
+  ];
+  const tiers = ["T0", "T1", "T2", "T3"] as const;
+  const verdicts = [undefined, "green", "red"] as const;
+  const approvalSets = [
+    {},
+    { "spec-review": true },
+    { "spec-review": true, "merge-review": true, "t3-merge": true },
+  ] as const;
+
+  for (const phase of phases)
+    for (const tier of tiers)
+      for (const gateVerdict of verdicts)
+        for (const humanApprovals of approvalSets) {
+          const a = nextAction(base({ phase, tier, gateVerdict, humanApprovals, loop, loopParams }));
+          expect(ALLOWED).toContain(a.kind);
+          // Only SPAWN_STATION may carry a station (artifact producer).
+          if (a.kind !== "SPAWN_STATION") {
+            expect("station" in a).toBe(false);
+          }
+        }
+});
