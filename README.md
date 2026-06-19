@@ -1,0 +1,49 @@
+# devloop
+
+Generische, projektübergreifende agentische Dev-Loop-Kette als Claude-Code-Plugin.
+
+Operationalisiert das Design `2026-06-19-workflow-orchestration-design.md`: eine Kette
+spezialisierter Subagenten (`specify → spec-to-tests → implement → critic`) mit einem
+**Driver** (`/devloop:loop`), zwei harten Mensch-Stopps, einer Rückkante mit Eskalation
+und einer **Wächter-Vorbedingung** (Auto-Loop nur, wo die nicht-korrumpierbaren Wächter
+stehen).
+
+Die Sicherheit hängt **nicht** am Driver-Prompt, sondern an einem deterministischen,
+getesteten TypeScript-Kern (Zustandsmaschine + content-gebundene Approval-Tokens) plus
+einem fail-closed CI-Required-Check.
+
+## Stationen (Skills)
+
+- `/devloop:specify` — führt zur `spec.md` (EARS + `REQ-`-IDs + deterministisch abgeleitetes Tier)
+- `/devloop:spec-to-tests` — Test-Skeletons je `REQ-`-ID, geroutet nach EARS-Typ
+- `/devloop:implement` — konsumiert Spec+Tests, öffnet PR (schreibt Spec/Tests nicht selbst)
+- `/devloop:critic` — adversarial, frischer Kontext, strukturiertes Verdikt
+- `/devloop:loop` — der Driver (orchestriert die Stationen als isolierte Subagenten)
+- `/devloop:init` — verdrahtet den CI-Bindungs-Anker in ein Ziel-Repo
+
+## Installation (Kollegen)
+
+```
+/plugin marketplace add mayflowergmbh/devloop
+/plugin install devloop@devloop
+# Updates:
+/plugin marketplace update devloop
+```
+
+> Veröffentlichung als Public-OSS unter der GitHub-Org `mayflower` erfolgt nach grünem Pilot.
+
+## Entwicklung
+
+```
+npm install
+npm test          # Vitest gegen den Kern + Struktur-Tests
+npm run build     # tsc src -> dist (dist ist Liefer-Artefakt)
+npm run check:dist  # verifiziert: eingechecktes dist == src
+```
+
+Dev-Install ohne Publish (lokaler Marketplace):
+
+```
+/plugin marketplace add ~/Code/devloop
+/plugin install devloop
+```

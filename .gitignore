@@ -1,0 +1,4 @@
+node_modules/
+*.log
+.DS_Store
+# NB: dist/ is a SHIPPED artifact (plugin delivery) — do NOT ignore it.

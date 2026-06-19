@@ -1,0 +1,11 @@
+{
+  "name": "devloop",
+  "owner": { "name": "Tobias Mogdans" },
+  "plugins": [
+    {
+      "name": "devloop",
+      "source": "./",
+      "description": "Generische agentische Dev-Loop-Kette mit harten Mensch-Stopps und Wächter-Vorbedingung."
+    }
+  ]
+}
