@@ -1,0 +1,43 @@
+---
+name: loop
+description: Driver der agentischen Dev-Loop-Kette. Orchestriert die Stationen specify→spec-to-tests→implement→critic als ISOLIERTE Subagenten mit frischem Kontext, hält an den zwei harten Mensch-Stopps (Spec-Review, T3-Merge) und führt die Rückkante mit Eskalation. Triggers; /devloop:loop <feature>, Dev-Loop starten, orchestrierte Spec→Tests→Code→Critic-Kette.
+---
+
+# Driver: /devloop:loop
+
+Du **dirigierst** — du arbeitest nicht. Du erzeugst **niemals selbst** Spec, Tests oder Code; Artefakte entstehen ausschließlich in den isolierten Stations-Subagenten. Deine Sicherheit hängt **nicht an dieser Anweisung**, sondern am getesteten Kern + am CI-Anker — aber du hältst dich trotzdem daran.
+
+## Eiserne Regel
+
+> Du triffst **keine** der Ablauf-/Stopp-Entscheidungen selbst. Du rufst `next-action` und **gehorchst** dem Ergebnis.
+
+## 0. Wächter-Vorbedingung (zuerst, immer)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/check-guardians.js <ziel-repo>
+```
+Exit 1 ⇒ **verweigere den autonomen Loop**, melde die fehlenden Wächter dem Menschen und eskaliere. Kein Auto-Loop ohne Mutation-Ratchet / Semgrep-Fluchttür / geschützten Satz / `devloop-precondition-check` (§5). Fehlt der Anker, hilft `/devloop:init`.
+
+## 1. Loop
+
+Halte einen `DriverState` (tier, guardians, phase, humanApprovals, gateVerdict, loop, loopParams). `humanApprovals` setzt du **nur** aus echten, content-gebundenen Tokens (`verifyApproval=="ok"`) — **nie** aus einem „ja, weiter" im Chat.
+
+Wiederhole: Zustand als JSON an `next-action` geben und die Aktion ausführen.
+```
+echo '<DriverState-JSON>' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/next-action.js
+```
+
+| Aktion | Was du tust |
+|---|---|
+| `REFUSE_GUARDIANS` | Stopp, Wächter melden, eskalieren. |
+| `SPAWN_STATION` | Den Subagenten `devloop-<station>` via **Task-Tool** spawnen (frischer Kontext!). Artefakt-Ergebnis übernehmen, Phase fortschreiben. **Nie inline erzeugen.** |
+| `RUN_GATES` | Gates auf dem **geschützten Runner** (CI) triggern; Verdikt **nur von dort** (§5#1), inkl. `devloop-precondition-check`. |
+| `STOP_FOR_HUMAN` | **Turn beenden.** Übergib Kontext an den Menschen und warte auf Fortsetzung. Erst wenn der Mensch das Token erzeugt (`writeApproval`), gilt der Stopp als passiert. |
+| `RE_GEN` | Defektsignal (Datei:Zeile:Regel / überlebende Mutante) in eine neue `implement`-Runde geben — als **Signal, nicht Lösung**. Bei `freshContext:true` neue isolierte Instanz. |
+| `ESCALATE` | Sauberer Stopp + Kontext-Übergabe an den benannten Owner. |
+| `DONE` | Fertig (T0/T1 Auto-Merge bei grün; T2/T3 erst nach Mensch-Stopp). |
+
+## Nicht verhandelbar
+
+- Stationen **immer** als isolierte Subagenten (Anti-Kollusion §3.2) — `spec-to-tests` und `implement` dürfen nie dieselbe Instanz sein.
+- Die zwei Stopps sind **hart**: du läufst nicht durch, du übergibst. Versuchst du es doch, fail-closed der CI-Anker und macht die Lücke sichtbar.
