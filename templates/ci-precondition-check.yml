@@ -1,0 +1,38 @@
+# devloop binding anchor — AUTHORITATIVE fail-closed required check (design §0.2/§5#1).
+# Copied into a target repo by `/devloop:init` and registered as a REQUIRED status check on
+# the protected runner. It fails closed when a phase token is missing/stale or when the diff
+# touches the protected set. A skipped human stop becomes a visible RED gap, not a silent pass.
+#
+# This file MUST contain the string "devloop-precondition-check" so checkGuardians() can
+# verify the binding anchor is wired in the target repo (it is itself a guardian).
+
+name: devloop-precondition-check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  devloop-precondition-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # Resolve the devloop CLI. Adjust to however devloop is vendored in this repo
+      # (npx from the installed plugin, a pinned tarball, or a vendored dist/).
+      - name: Verify devloop precondition (fail-closed)
+        run: |
+          # Build the request from the PR context. The exact stop / artifact / protected
+          # globs are filled in by `/devloop:init` from this repo's constitution config.
+          DIFF=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | jq -R . | jq -s .)
+          jq -n \
+            --arg repo "." \
+            --arg stop "spec-review" \
+            --arg artifact "spec.md" \
+            --argjson diff "$DIFF" \
+            --argjson protected "$(cat .devloop/protected-globs.json)" \
+            '{repo:$repo, stop:$stop, artifactPath:$artifact, diffPaths:$diff, protectedGlobs:$protected}' \
+            | node node_modules/devloop/dist/cli/precondition-check.js
