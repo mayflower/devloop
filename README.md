@@ -41,9 +41,25 @@ npm run build     # tsc src -> dist (dist ist Liefer-Artefakt)
 npm run check:dist  # verifiziert: eingechecktes dist == src
 ```
 
-Dev-Install ohne Publish (lokaler Marketplace):
+Dev-Install ohne Publish (lokaler Marketplace — kein git-Remote/Push nötig):
 
 ```
 /plugin marketplace add ~/Code/devloop
-/plugin install devloop
+/plugin install devloop@devloop
 ```
+
+`devloop@devloop` = `pluginName@marketplaceName` (beide aus den Feldern `name` in
+`.claude-plugin/plugin.json` bzw. `marketplace.json`, nicht aus dem Pfad).
+
+**Achtung Cache:** Beim Installieren wird das Plugin nach `~/.claude/plugins/cache`
+**kopiert** (kein Symlink, kein Hot-Reload). Nach jeder Code-Änderung also neu bauen
+**und** neu installieren — sonst testest du gegen den alten Cache:
+
+```
+npm run build
+/plugin uninstall devloop@devloop
+/plugin install devloop@devloop
+/reload-plugins
+```
+
+(`/plugin marketplace update devloop` aktualisiert nur den Katalog, nicht den gecachten Code.)
