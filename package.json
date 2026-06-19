@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "author": "Mayflower GmbH",
+  "repository": { "type": "git", "url": "https://github.com/mayflower/devloop.git" },
+  "homepage": "https://github.com/mayflower/devloop#readme",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",

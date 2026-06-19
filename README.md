@@ -65,3 +65,7 @@ npm run build
 ```
 
 (`/plugin marketplace update devloop` aktualisiert nur den Katalog, nicht den gecachten Code.)
+
+## Lizenz
+
+MIT — siehe [LICENSE](./LICENSE). © 2026 Mayflower GmbH.
