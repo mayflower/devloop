@@ -1,0 +1,21 @@
+name: build-and-test
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Anti-drift: the shipped dist/ MUST match src/. If a build would change dist/,
+      # the checked-in artifact is stale -> fail closed (design §0.3).
+      - name: dist is in sync with src
+        run: npm run check:dist

@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+// devloop CLI dispatcher (CommonJS — extensionless bin). Forwards to the shipped dist CLIs
+// so colleagues need only Node (no build, no tsx). The skills call dist/cli/*.js directly;
+// this is the ergonomic human entry (e.g. `devloop init <repo>`).
+"use strict";
+const { spawnSync } = require("node:child_process");
+const { join } = require("node:path");
+
+const ALLOWED = ["init", "check-guardians", "derive-tier", "next-action", "precondition-check"];
+const [sub, ...rest] = process.argv.slice(2);
+
+if (!ALLOWED.includes(sub)) {
+  process.stderr.write(`usage: devloop <${ALLOWED.join("|")}> [args]\n`);
+  process.exit(64);
+}
+
+const target = join(__dirname, "..", "dist", "cli", `${sub}.js`);
+const result = spawnSync(process.execPath, [target, ...rest], { stdio: "inherit" });
+process.exit(result.status == null ? 1 : result.status);
