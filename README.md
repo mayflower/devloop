@@ -9,8 +9,10 @@ und einer **Wächter-Vorbedingung** (Auto-Loop nur, wo die nicht-korrumpierbaren
 stehen).
 
 Die Sicherheit hängt **nicht** am Driver-Prompt, sondern an einem deterministischen,
-getesteten TypeScript-Kern (Zustandsmaschine + content-gebundene Approval-Tokens) plus
-einem fail-closed CI-Required-Check.
+getesteten TypeScript-Kern (Zustandsmaschine + Approval-Verifikation) plus einem
+fail-closed CI-Required-Check und GitHub-Branch-Protection.
+
+➡️ **Benutzung (End-to-End): siehe [USAGE.md](./USAGE.md).**
 
 ## Stationen (Skills)
 

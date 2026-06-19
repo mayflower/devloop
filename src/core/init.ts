@@ -17,6 +17,10 @@ const PROTECTED_GLOBS_SKELETON = JSON.stringify(
   2,
 );
 
+// Anchor (b): identities that are NOT human (the agent's bot/app account). A review by any
+// of these never counts as a human approval. The adopter fills in their agent's login(s).
+const BOT_LOGINS_SKELETON = JSON.stringify(["devloop-agent[bot]"], null, 2);
+
 const TIER_MAP_SKELETON = JSON.stringify(
   {
     rules: [
@@ -47,6 +51,7 @@ export function initRepo(targetRepo: string, ciTemplate: string): InitResult {
   writeIfAbsent(".github/workflows/devloop-precondition-check.yml", ciTemplate);
   writeIfAbsent(".devloop/protected-globs.json", PROTECTED_GLOBS_SKELETON + "\n");
   writeIfAbsent(".devloop/tier-map.json", TIER_MAP_SKELETON + "\n");
+  writeIfAbsent(".devloop/bot-logins.json", BOT_LOGINS_SKELETON + "\n");
 
   return result;
 }

@@ -1,7 +1,8 @@
-// CLI: the AUTHORITATIVE fail-closed binding anchor (design §0.2/§5#1). Meant to run as a
-// required check on the protected CI runner — NOT a prompt. It fails closed when a phase
-// token is missing/stale, or when the diff touches the protected set (gate-tamper alarm).
-// A skipped stop thus becomes a visible RED gap, not a silent pass.
+// CLI: LOCAL/ADVISORY precondition check over the content-bound token (anchor a path).
+// NOTE: the AUTHORITATIVE CI gate under the chosen anchor (b) is `verify-review` (human
+// GitHub PR approval, which the agent cannot forge) + protected-set. Use this CLI for the
+// local fast pre-check, or for repos that opt into the local-token anchor (a). It fails
+// closed when the token is missing/stale or the diff touches the protected set.
 //
 // stdin JSON: { repo, stop, artifactPath, diffPaths?, protectedGlobs? }
 

@@ -1,0 +1,20 @@
+// Server-authoritative approval (anchor b, design §5.1/§10.1): the authority is a HUMAN
+// PR review on GitHub — a channel the agent cannot reach. This pure function decides, from
+// the PR's review list, whether a valid human approval exists for the current HEAD.
+//
+// Core property: neither the agent (a bot identity) nor the PR author can self-approve.
+// Content-binding: an approval counts only on the current HEAD commit (GitHub also dismisses
+// stale reviews on push); approvals on older commits are "stale".
+export function evaluateApproval(reviews, ctx) {
+    const bots = new Set(ctx.botLogins ?? []);
+    const owners = ctx.humanReviewers ? new Set(ctx.humanReviewers) : null;
+    const humanApprovals = reviews.filter((r) => r.state === "APPROVED" &&
+        r.user !== ctx.prAuthor && // no self-approval
+        !bots.has(r.user) && // the agent is not a human
+        (owners === null || owners.has(r.user)));
+    if (humanApprovals.length === 0)
+        return "missing";
+    if (humanApprovals.some((r) => r.commit_id === ctx.headSha))
+        return "ok";
+    return "stale";
+}

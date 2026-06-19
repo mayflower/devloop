@@ -11,7 +11,11 @@ Macht ein Ziel-Repo in einem Schritt devloop-fähig: legt den **CI-Required-Chec
 node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/init.js <ziel-repo>
 ```
 
-Danach:
+Danach (Anker b — die Autorität sitzt serverseitig auf GitHub):
 1. Den Workflow als **Required Status Check** auf dem geschützten Runner registrieren (Branch Protection).
-2. `tier-map.json` und `protected-globs.json` an das Ziel-Repo anpassen (Wirkung→Tier, geschützter Satz).
-3. Sicherstellen, dass die übrigen Wächter stehen (Mutation-Ratchet, Semgrep-Fluchttür, geschützter Satz) — sonst verweigert `/devloop:loop` zu Recht den Auto-Loop.
+2. **Branch Protection** für die zwei harten Stopps:
+   - **Require a review from CODEOWNERS** (das ist der Spec-Review/T3-Merge-Mensch) + **dismiss stale approvals on push** (Content-Bindung).
+   - Die **Agent-Identität von Approve/Merge ausschließen** (sie darf nur vorschlagen) und in `.devloop/bot-logins.json` eintragen → `verify-review` zählt ihre Reviews nie als Mensch-Approval.
+3. **CODEOWNERS** für die Spec-Pfade (`spec.md` / Bounded-Context) setzen — das ist der unabhängige Intent-Halter (§5.1/§10.1).
+4. `tier-map.json` und `protected-globs.json` ans Repo anpassen (Wirkung→Tier, geschützter Satz).
+5. Sicherstellen, dass die übrigen Wächter stehen (Mutation-Ratchet, Semgrep-Fluchttür, geschützter Satz) — sonst verweigert `/devloop:loop` zu Recht den Auto-Loop.

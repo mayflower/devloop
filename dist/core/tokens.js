@@ -1,8 +1,10 @@
-// Content-bound approval tokens (design §0.2) — the heart of the binding mechanism.
-// A stop is only "passed" if a token exists that is bound to the sha256 of the EXACT
-// reviewed artifact. Editing the artifact after approval breaks the hash -> "stale".
-// Skipping the stop -> "missing". Either way the gap is DETECTABLE (not a silent skip);
-// the deterministic anchors (CI required-check / hook) act on this verdict.
+// Content-bound approval tokens — the LOCAL, ADVISORY mirror of an approval (anchor a /
+// fast local pre-check). NOTE: under the chosen anchor (b), the AUTHORITATIVE approval is a
+// human GitHub PR review verified server-side (see review.ts / verify-review.ts) — a channel
+// the agent cannot forge. This local token must NOT be treated as the authority (the agent
+// could write it); it exists only for fast local feedback in the inner loop.
+// A token is "ok" only if bound to the sha256 of the EXACT reviewed artifact; editing the
+// artifact after approval -> "stale"; missing -> "missing". Gap is always DETECTABLE.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

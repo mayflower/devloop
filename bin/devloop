@@ -7,7 +7,14 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const ALLOWED = ["init", "check-guardians", "derive-tier", "next-action", "precondition-check"];
+const ALLOWED = [
+  "init",
+  "check-guardians",
+  "derive-tier",
+  "next-action",
+  "precondition-check",
+  "verify-review",
+];
 const [sub, ...rest] = process.argv.slice(2);
 
 if (!ALLOWED.includes(sub)) {

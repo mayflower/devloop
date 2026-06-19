@@ -20,7 +20,7 @@ Exit 1 ⇒ **verweigere den autonomen Loop**, melde die fehlenden Wächter dem M
 
 ## 1. Loop
 
-Halte einen `DriverState` (tier, guardians, phase, humanApprovals, gateVerdict, loop, loopParams). `humanApprovals` setzt du **nur** aus echten, content-gebundenen Tokens (`verifyApproval=="ok"`) — **nie** aus einem „ja, weiter" im Chat.
+Halte einen `DriverState` (tier, guardians, phase, humanApprovals, gateVerdict, loop, loopParams). `humanApprovals` setzt du **nur** aus dem **autoritativen GitHub-Review** (Anker b): `verify-review` prüft via `gh api`, ob ein **Mensch** (nicht der Agent-Bot, nicht der PR-Autor) den aktuellen HEAD freigegeben hat. Du schreibst **keine** Approval-Tokens selbst und akzeptierst **kein** „ja, weiter" im Chat — du kannst dich nicht selbst freigeben.
 
 Wiederhole: Zustand als JSON an `next-action` geben und die Aktion ausführen.
 ```
@@ -32,7 +32,7 @@ echo '<DriverState-JSON>' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/next-action.js
 | `REFUSE_GUARDIANS` | Stopp, Wächter melden, eskalieren. |
 | `SPAWN_STATION` | Den Subagenten `devloop-<station>` via **Task-Tool** spawnen (frischer Kontext!). Artefakt-Ergebnis übernehmen, Phase fortschreiben. **Nie inline erzeugen.** |
 | `RUN_GATES` | Gates auf dem **geschützten Runner** (CI = Gate of Record) triggern; **Verdikt nur von dort** (§5#1), inkl. `devloop-precondition-check`, Protected-Set-Ratchet und **server-berechnetem Tier aus dem Diff** (nicht agent-deklariert, §9). Fehler-Logs über den schmalen Rückkanal lesen (`gh pr checks`, `gh run view --log-failed`). |
-| `STOP_FOR_HUMAN` | **Turn beenden.** Übergib Kontext an den Menschen und warte auf Fortsetzung. Erst wenn der Mensch das Token erzeugt (`writeApproval`), gilt der Stopp als passiert. |
+| `STOP_FOR_HUMAN` | **Turn beenden.** Übergib Kontext an den Menschen und warte. Der Stopp gilt erst als passiert, wenn ein **Mensch per GitHub-PR-Review** (CODEOWNERS) den aktuellen Stand freigibt — verifiziert durch `verify-review` auf CI (Anker b). T3-Merge ist zusätzlich durch Branch-Protection erzwungen. **Nicht** du gibst frei. |
 | `RE_GEN` | Defektsignal (Datei:Zeile:Regel / überlebende Mutante) in eine neue `implement`-Runde geben — als **Signal, nicht Lösung**. Bei `freshContext:true` neue isolierte Instanz. |
 | `ESCALATE` | Sauberer Stopp + Kontext-Übergabe an den benannten Owner. |
 | `DONE` | Fertig (T0/T1 Auto-Merge bei grün; T2/T3 erst nach Mensch-Stopp). |

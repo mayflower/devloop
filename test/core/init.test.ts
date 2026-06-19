@@ -19,10 +19,11 @@ test("init writes the CI binding-anchor workflow (containing the guardian marker
   expect(readFileSync(wf, "utf8")).toContain("devloop-precondition-check");
 });
 
-test("init writes the config skeleton (.devloop/protected-globs.json + tier-map.json)", () => {
+test("init writes the config skeleton (protected-globs + tier-map + bot-logins for anchor b)", () => {
   initRepo(repo, TEMPLATE);
   expect(existsSync(join(repo, ".devloop/protected-globs.json"))).toBe(true);
   expect(existsSync(join(repo, ".devloop/tier-map.json"))).toBe(true);
+  expect(existsSync(join(repo, ".devloop/bot-logins.json"))).toBe(true);
 });
 
 test("the bootstrapped repo then satisfies the precondition-check guardian", async () => {
