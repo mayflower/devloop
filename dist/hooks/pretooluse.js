@@ -13,6 +13,11 @@ export function evaluateHook(input, repo) {
     const command = input.tool_input?.command ?? "";
     if (!MERGE_PATTERN.test(command))
         return { block: false };
+    // Scope: this is a GLOBAL plugin hook. Only act in devloop-managed repos (those that
+    // ran /devloop:init -> have a .devloop/ dir). Elsewhere it must be a no-op, so it never
+    // interferes with merges in unrelated repos.
+    if (!existsSync(join(repo, ".devloop")))
+        return { block: false };
     const tokenPresent = existsSync(join(repo, ".devloop", "t3-merge.approved"));
     if (tokenPresent)
         return { block: false };
