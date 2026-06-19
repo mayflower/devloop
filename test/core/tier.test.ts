@@ -28,3 +28,27 @@ test("a lower-tier match does not override a higher-tier match regardless of ord
   // docs/*.md (T1) plus auth (T3) -> T3
   expect(deriveTier(["docs/a.md", "service/auth/login.ts"], tierMap)).toBe("T3");
 });
+
+// --- Obol-style record format {tier:[globs]} (calibration) ------------------
+const recordMap = {
+  T3: ["**/migrations/**", "**/auth/**", "packages/contracts/**"],
+  T2: ["services/**"],
+  T1: ["**"], // catch-all floor (Obol's convention instead of a `default` field)
+} as const;
+
+test("accepts the {tier:[globs]} record format with upgrade-wins", () => {
+  expect(deriveTier(["services/x.ts"], recordMap)).toBe("T2");
+  expect(deriveTier(["services/db/migrations/1.sql", "services/x.ts"], recordMap)).toBe("T3");
+  expect(deriveTier(["README"], recordMap)).toBe("T1"); // ** catch-all
+});
+
+test("record format without a catch-all: an unmatched path stays conservative (highest tier)", () => {
+  const noFloor = { T3: ["**/auth/**"], T2: ["src/**"] };
+  expect(deriveTier(["weird.bin"], noFloor)).toBe("T3");
+  expect(deriveTier(["src/a.ts"], noFloor)).toBe("T2");
+});
+
+test("record format honours an explicit default key when present", () => {
+  const withDefault = { T2: ["src/**"], default: "T1" as const };
+  expect(deriveTier(["unmatched.bin"], withDefault)).toBe("T1");
+});

@@ -8,13 +8,12 @@ const PROTECTED_GLOBS_SKELETON = JSON.stringify(["**/stryker.conf.*", "**/.semgr
 // Anchor (b): identities that are NOT human (the agent's bot/app account). A review by any
 // of these never counts as a human approval. The adopter fills in their agent's login(s).
 const BOT_LOGINS_SKELETON = JSON.stringify(["devloop-agent[bot]"], null, 2);
+// tier -> globs, highest match wins; the floor is the `**` catch-all in T1 (no separate
+// `default` needed). deriveTier also accepts the verbose {rules,default} shape.
 const TIER_MAP_SKELETON = JSON.stringify({
-    rules: [
-        { tier: "T3", anyOf: ["**/migrations/**", "**/auth/**", "**/payment/**"] },
-        { tier: "T2", anyOf: ["src/**"] },
-        { tier: "T1", anyOf: ["**/*.md", "docs/**"] },
-    ],
-    default: "T3",
+    T3: ["**/migrations/**", "**/auth/**", "**/payment/**", "**/contracts/**"],
+    T2: ["src/**", "services/**"],
+    T1: ["**"],
 }, null, 2);
 export function initRepo(targetRepo, ciTemplate) {
     const result = { created: [], skipped: [] };

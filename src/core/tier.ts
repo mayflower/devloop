@@ -16,11 +16,35 @@ export interface TierMap {
   default: Tier;
 }
 
+// Alternative, simpler config shape: tier -> globs (e.g. {"T3":[...],"T2":[...],"T1":["**"]}),
+// with the floor encoded as a `**` catch-all (or an optional explicit `default`). This is a
+// common convention (Obol uses it); deriveTier accepts it natively so a repo's existing
+// tier-map can be reused without an adapter.
+export type TierRecord = Partial<Record<Tier, readonly string[]>> & { default?: Tier };
+
+export type TierMapInput = TierMap | TierRecord;
+
 const ORDER: Tier[] = ["T0", "T1", "T2", "T3"];
 const rank = (t: Tier): number => ORDER.indexOf(t);
 const higher = (a: Tier, b: Tier): Tier => (rank(a) >= rank(b) ? a : b);
 
-export function deriveTier(touched: string[], map: TierMap): Tier {
+const isTierMap = (m: TierMapInput): m is TierMap =>
+  Array.isArray((m as TierMap).rules);
+
+function normalizeTierMap(map: TierMapInput): TierMap {
+  if (isTierMap(map)) return map;
+  const entries = Object.entries(map).filter(
+    ([k, v]) => k !== "default" && Array.isArray(v),
+  ) as [Tier, string[]][];
+  const rules: TierRule[] = entries.map(([tier, anyOf]) => ({ tier, anyOf: [...anyOf] }));
+  // Default for unmatched paths: explicit `default`, else the highest tier present
+  // (conservative — an unknown path is never silently downgraded, §9).
+  const fallback = entries.reduce<Tier>((hi, [t]) => higher(hi, t), "T0");
+  return { rules, default: map.default ?? fallback };
+}
+
+export function deriveTier(touched: string[], mapInput: TierMapInput): Tier {
+  const map = normalizeTierMap(mapInput);
   if (touched.length === 0) return map.default;
   let result: Tier | null = null;
   for (const path of touched) {

@@ -5,7 +5,19 @@ import { matchesAnyGlob } from "./glob.js";
 const ORDER = ["T0", "T1", "T2", "T3"];
 const rank = (t) => ORDER.indexOf(t);
 const higher = (a, b) => (rank(a) >= rank(b) ? a : b);
-export function deriveTier(touched, map) {
+const isTierMap = (m) => Array.isArray(m.rules);
+function normalizeTierMap(map) {
+    if (isTierMap(map))
+        return map;
+    const entries = Object.entries(map).filter(([k, v]) => k !== "default" && Array.isArray(v));
+    const rules = entries.map(([tier, anyOf]) => ({ tier, anyOf: [...anyOf] }));
+    // Default for unmatched paths: explicit `default`, else the highest tier present
+    // (conservative — an unknown path is never silently downgraded, §9).
+    const fallback = entries.reduce((hi, [t]) => higher(hi, t), "T0");
+    return { rules, default: map.default ?? fallback };
+}
+export function deriveTier(touched, mapInput) {
+    const map = normalizeTierMap(mapInput);
     if (touched.length === 0)
         return map.default;
     let result = null;

@@ -2,11 +2,11 @@
 // writes {tier} on stdout. The tier map comes from the target repo's config.
 // Thin wrapper over the tested core.
 
-import { deriveTier, type TierMap } from "../core/tier.js";
+import { deriveTier, type TierMapInput } from "../core/tier.js";
 import { readStdin } from "./_stdin.js";
 
 const { touched, tierMap } = JSON.parse(await readStdin()) as {
   touched: string[];
-  tierMap: TierMap;
+  tierMap: TierMapInput;
 };
 process.stdout.write(JSON.stringify({ tier: deriveTier(touched, tierMap) }) + "\n");
