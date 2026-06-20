@@ -72,6 +72,25 @@ test("a /devloop:cleanup skill exists for pruning merged branches/worktrees", ()
   expect(read("skills/cleanup/SKILL.md")).toMatch(/cleanup\.js/);
 });
 
+test("spec-to-tests emits complete SKIPPED tests (not empty skeletons)", () => {
+  const md = read("agents/devloop-spec-to-tests.md");
+  expect(md).toMatch(/\.skip/);
+  expect(md.toLowerCase()).toMatch(/vollständig/); // complete tests, real assertions
+  expect(md).toMatch(/verify-unskip/); // points at the machine-audited seam
+});
+
+test("implement is restricted to removing .skip in test files (the test<->code seam)", () => {
+  const md = read("agents/devloop-implement.md");
+  expect(md).toMatch(/\.skip/);
+  expect(md).toMatch(/verify-unskip/);
+});
+
+test("the loop skill drives the spec-PR-first flow (OPEN_SPEC_PR + MERGE_SPEC_PR)", () => {
+  const md = read("skills/loop/SKILL.md");
+  expect(md).toMatch(/OPEN_SPEC_PR/);
+  expect(md).toMatch(/MERGE_SPEC_PR/);
+});
+
 test("the ci template carries the guardian marker string", () => {
   expect(read("templates/ci-precondition-check.yml")).toContain("devloop-precondition-check");
 });

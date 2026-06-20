@@ -38,11 +38,21 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
 4. Config ans Repo anpassen:
    - `.devloop/tier-map.json` — Wirkung→Tier (welche Pfade sind T3/T2/T1).
    - `.devloop/protected-globs.json` — der geschützte Satz (Gate-Configs, Thresholds, …).
+     **Wichtig (Spec-PR-Flow):** **nicht** die Per-Feature-Specs schützen (nur Governance wie
+     `constitution.md`), sonst trippt jeder Spec-PR „protected-set-touched" und bräuchte einen
+     Admin-Override statt eines normalen Reviews.
    - `.devloop/bot-logins.json` — die GitHub-Login(s) **deines Agenten** (damit seine
      „Approvals" nie als Mensch zählen).
-5. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),
+5. **CODEOWNERS auf das Spec-Verzeichnis** (z.B. `/.specify/specs/` bzw. wo deine Specs liegen) →
+   erzwingt das Spec-Review per Branch-Protection, tier-unabhängig, ohne Admin-Override. (Ohne das
+   würde ein Spec-only-Diff zu T0/T1 ableiten und ohne Review auto-mergen — der Spec-Review ginge verloren.)
+6. **Trace-/Coverage-Gate muss `.skip`'te Tests als Abdeckung zählen** (Regex über Quelltext).
+   Davon hängt ab, dass der Spec-PR `main` grün hält. Wer das weghärtet, bricht das Spec-PR-Modell still.
+7. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),
    Semgrep-Fluchttür-Regeln, geschützter Satz (CODEOWNERS). Fehlt einer, **verweigert
    `/devloop:loop` zu Recht** den Auto-Loop (`check-guardians`).
+8. **`verify-unskip`** als Required Check auf dem Implementierungs-PR wiren (im CI-Template enthalten) —
+   erzwingt, dass `implement` an Tests nur `.skip` entfernt.
 
 > Prüfen, ob alle Wächter stehen: `devloop check-guardians <repo>` (exit 0 = bereit).
 
@@ -54,22 +64,27 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
 /devloop:loop <feature-beschreibung>
 ```
 
-Was passiert (der Driver gehorcht dabei dem getesteten Kern, trifft nichts selbst):
+Was passiert (Spec-PR-zuerst; der Driver gehorcht dem getesteten Kern, trifft nichts selbst):
 
 1. **Wächter-Vorbedingung** — fehlt ein Wächter → Stopp + Meldung (kein Auto-Loop).
-2. **specify** (Subagent) → schreibt `spec.md` (User Story, EARS-Kriterien mit `REQ-`-IDs,
-   vorläufiges Tier).
-3. **▣ STOPP: Spec-Review** — der Driver beendet den Turn. **Du** (oder ein zweiter Mensch)
-   reviewst die Spec und gibst sie per **GitHub-PR-Review** frei (s. §3).
-4. **spec-to-tests** (eigener Subagent) → Test-Skeletons je `REQ-`-ID, nach EARS-Typ.
-5. **implement** (eigener Subagent) → implementiert in der Sandbox gegen Spec+Tests, voller
-   Gate-Satz läuft lokal **advisorisch**, öffnet einen **PR** auf den Feature-Branch.
-6. **Gates auf CI** (autoritativ) — typecheck/lint/test, Mutation-Ratchet, Semgrep,
-   `devloop-precondition-check`, Tier aus dem Diff. Rot → Defektsignal über `gh`-Rückkanal →
-   neue `implement`-Runde (Rückkante, mit Max-Iter + Eskalation).
-7. **critic** (eigener Subagent, adversarial) → strukturiertes Verdikt.
-8. **Merge je Tier:** T0/T1 Auto-Merge bei grün · T2 required Reviewer · **▣ STOPP: T3-Merge**
-   (Mensch + bewachte Aktion).
+2. **specify** (Subagent) → `spec.md` (User Story, EARS-Kriterien mit `REQ-`-IDs, vorläufiges Tier).
+3. **spec-to-tests** (eigener Subagent) → zu jeder `REQ-`-ID **vollständige, aber `.skip`'te** Tests
+   (nach EARS-Typ). `main` bleibt grün (Trace zählt Skips, Vitest rötet nicht).
+4. **Spec-PR öffnen** (`OPEN_SPEC_PR`) → Spec + geskippte Tests als eigener PR gegen `main`.
+5. **▣ STOPP: Spec-Review** — der Driver beendet den Turn. **Du/ein zweiter Mensch** reviewst
+   den Spec-PR (Spec *und* Tests zusammen) und gibst ihn per **GitHub-CODEOWNER-Review** frei (§3).
+6. **Spec mergen** (`MERGE_SPEC_PR`) → Spec-PR nach `main`, `git pull`. `implement` baut auf `main`.
+7. **implement** (eigener, isolierter Subagent) → entfernt **nur** das `.skip` und schreibt den
+   Code (nie Tests ändern — `verify-unskip` prüft das). Voller Gate-Satz lokal advisorisch, öffnet
+   den **Implementierungs-PR**.
+8. **Gates auf CI** (autoritativ) — typecheck/lint/test, Mutation-Ratchet, Semgrep,
+   `devloop-precondition-check`, `verify-unskip`, Tier aus dem Diff. Rot → Defektsignal über
+   `gh`-Rückkanal → neue `implement`-Runde (Rückkante, Max-Iter + Eskalation).
+9. **critic** (eigener Subagent, adversarial) → strukturiertes Verdikt.
+10. **Merge je Tier:** T0/T1 Auto-Merge bei grün · T2 required Reviewer · **▣ STOPP: T3-Merge**.
+
+> **Zwei PRs, zwei Mensch-Tore:** der **Spec-PR** (Schritt 5, Spec-Review §5.1) und der
+> **Implementierungs-PR** (Schritt 10, Merge-Stopp §9). Beide sind echte CODEOWNER-Reviews (Anker b).
 
 ---
 

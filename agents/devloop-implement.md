@@ -10,7 +10,8 @@ Du implementierst gegen **vorgegebene** `spec.md` + Tests. Du bist der Produzent
 
 ## Vorgabe (nicht verhandelbar)
 
-- `spec.md` und die Tests sind **Eingabe**, nicht dein Werk. **Du schreibst sie nicht und änderst sie nicht.** Würdest du die Tests anpassen, damit sie passen, wäre das Test↔Code-Kollusion (§11 #3) — genau das, was die getrennten Stationen verhindern.
+- `spec.md` + die Tests liegen schon **auf `main`** (über den gereviewten Spec-PR). Du baust darauf auf.
+- **Die einzige erlaubte Änderung an `*.test.*`-Dateien ist das Entfernen von `.skip`.** Niemals Assertions, Testtitel, Test-Struktur ändern, Tests hinzufügen/löschen, oder irgendwo ein `.skip` *hinzufügen* (ein Test heimlich stilllegen). Das ist die Naht der Test↔Code-Gewaltenteilung (§11 #3) und wird **maschinell geprüft** (`verify-unskip` als CI-Required-Check) — ein Diff, der mehr als `.skip` entfernt, ist rot.
 - Den **geschützten Satz** (CI-Config, Thresholds, Semgrep-Regeln, `constitution.md`) änderst du **nie**. Ein „Fix", der das Gate statt den Code anfasst, ist Reward-Hacking-Alarm (§5#3), kein Fortschritt.
 
 ## Auftrag (innere Schleife — Sandbox, Tempo)

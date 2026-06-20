@@ -2,9 +2,15 @@
 // PURE function: given the current state, return the next action. The Slash-Command is
 // merely its executor; the safety-relevant invariants live HERE and are unit-tested.
 //
+// Flow (spec-PR-first, surfaced by the Obol pilot): the spec + its (skipped) tests are
+// reviewed as their own PR BEFORE any code, so the spec-review stop has a real reviewable
+// HEAD (anchor b) and the artifact handoff runs via merge-to-main -> pull:
+//   specify -> spec-to-tests(skipped) -> OPEN_SPEC_PR -> spec-review stop -> MERGE_SPEC_PR
+//   -> implement (unskip + code) -> gates -> critic -> merge.
+//
 // Invariants proven by driver.test.ts (1:1 with the §8 Definition of Done):
 //   1. Guardians missing  -> REFUSE_GUARDIANS (no path loops without the guardians).
-//   2. Spec-review stop is not skippable (no branch leaves "specified" without the token).
+//   2. Spec-review stop is not skippable (no branch leaves "spec-pr-open" without the token).
 //   3. T3-merge stop is not skippable; T0/T1 auto-merge at green.
 //   4. The driver NEVER produces an artifact inline — SPAWN_STATION is the only producer.
 //   5. The back-edge feedback is a defect SIGNAL, never a solution (type-enforced).
@@ -21,6 +27,8 @@ export type Phase =
   | "init"
   | "specified"
   | "tests-written"
+  | "spec-pr-open"
+  | "spec-merged"
   | "implemented"
   | "gated"
   | "merge-pending";
@@ -28,6 +36,8 @@ export type Phase =
 export type Action =
   | { kind: "REFUSE_GUARDIANS"; missing: string[] }
   | { kind: "SPAWN_STATION"; station: Station }
+  | { kind: "OPEN_SPEC_PR" } // open the spec + skipped-tests PR for the spec-review stop
+  | { kind: "MERGE_SPEC_PR" } // spec approved -> merge it to main; implement builds on main
   | { kind: "RUN_GATES" }
   | { kind: "STOP_FOR_HUMAN"; stop: Stop }
   | { kind: "RE_GEN"; feedback: "defect-signal"; freshContext: boolean }
@@ -86,12 +96,22 @@ export function nextAction(state: DriverState): Action {
       return { kind: "SPAWN_STATION", station: "specify" };
 
     case "specified":
-      // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust).
-      return state.humanApprovals["spec-review"]
-        ? { kind: "SPAWN_STATION", station: "spec-to-tests" }
-        : { kind: "STOP_FOR_HUMAN", stop: "spec-review" };
+      // Tests are authored by the independent station BEFORE the spec-review stop, so the
+      // reviewer sees spec + its (skipped) tests together. No code yet -> §5.1 preserved.
+      return { kind: "SPAWN_STATION", station: "spec-to-tests" };
 
     case "tests-written":
+      return { kind: "OPEN_SPEC_PR" };
+
+    case "spec-pr-open":
+      // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust). It is
+      // now a real CODEOWNER review on the spec PR (anchor b). Approved -> merge the spec.
+      return state.humanApprovals["spec-review"]
+        ? { kind: "MERGE_SPEC_PR" }
+        : { kind: "STOP_FOR_HUMAN", stop: "spec-review" };
+
+    case "spec-merged":
+      // Spec is on main; implement (separate, isolated) builds on it: unskip + code.
       return { kind: "SPAWN_STATION", station: "implement" };
 
     case "implemented":
