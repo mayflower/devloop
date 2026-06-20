@@ -19,6 +19,15 @@ if (req.diffPaths &&
     touchesProtectedSet(req.diffPaths, req.protectedGlobs)) {
     fail("protected-set-touched: the diff edits a guardian/gate config (reward-hacking alarm)");
 }
+// 2. Tier gate (§9): T0/T1 auto-merge — no approval required. (Gate-tamper above still applied.)
+// Unknown/absent tier defaults to conservative "T3" (approval required). The authoritative
+// T2/T3 merge block is branch protection's required CODEOWNER review on the high-tier paths;
+// this check additionally validates a present approval (human, on HEAD) and the protected set.
+const tier = req.tier ?? "T3";
+if (tier === "T0" || tier === "T1") {
+    process.stdout.write(JSON.stringify({ ok: true, tier, note: "tier T0/T1: no approval required (§9)" }) + "\n");
+    process.exit(0);
+}
 const status = evaluateApproval(reviews, req);
 if (status === "ok") {
     process.stdout.write(JSON.stringify({ ok: true }) + "\n");

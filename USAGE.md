@@ -43,9 +43,15 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      Admin-Override statt eines normalen Reviews.
    - `.devloop/bot-logins.json` — die GitHub-Login(s) **deines Agenten** (damit seine
      „Approvals" nie als Mensch zählen).
-5. **CODEOWNERS auf das Spec-Verzeichnis** (z.B. `/.specify/specs/` bzw. wo deine Specs liegen) →
-   erzwingt das Spec-Review per Branch-Protection, tier-unabhängig, ohne Admin-Override. (Ohne das
-   würde ein Spec-only-Diff zu T0/T1 ableiten und ohne Review auto-mergen — der Spec-Review ginge verloren.)
+5. **CODEOWNERS = das §9-Merge-Tor (wichtig).** CODEOWNERS muss decken:
+   - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig;
+   - **alle T2/T3-Pfade aus deiner `tier-map`** (auth, migrations, contracts, `src/**`, …).
+   So funktioniert §9 serverseitig: **T0/T1 berührt keine CODEOWNER-Pfade → kein Review nötig → Auto-Merge;
+   T2/T3 berührt CODEOWNER-Pfade → required Review.** `verify-review` failt **nicht** auf „noch nicht
+   approved" (sonst hinge ein veralteter FAILURE-Lauf, s. v0.2.4) — der T2/T3-Block kommt aus CODEOWNERS.
+   > **Drift-Achtung:** Die **tier-map-T2/T3-Pfade müssen ⊆ CODEOWNER-Pfade** sein. Klafft das auseinander,
+   > kann ein T2/T3-PR ohne Review auto-mergen. `verify-review` ist tier-bewusst (T0/T1 grün, Gate-Tamper +
+   > Approval-Gültigkeit immer), erzwingt das „muss approved sein" aber **nicht** selbst — das tut CODEOWNERS.
 6. **Trace-/Coverage-Gate muss `.skip`'te Tests als Abdeckung zählen** (Regex über Quelltext).
    Davon hängt ab, dass der Spec-PR `main` grün hält. Wer das weghärtet, bricht das Spec-PR-Modell still.
 7. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),

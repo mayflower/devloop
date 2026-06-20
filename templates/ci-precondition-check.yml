@@ -89,10 +89,11 @@ jobs:
             --argjson reviews "$REVIEWS" \
             --arg prAuthor "$AUTHOR" \
             --arg headSha "$HEAD_SHA" \
+            --arg tier "$(jq -r .tier tier.json)" \
             --argjson bots "$(cat .devloop/bot-logins.json)" \
             --argjson diff "$DIFF" \
             --argjson protected "$(cat .devloop/protected-globs.json)" \
-            '{reviews:$reviews, prAuthor:$prAuthor, headSha:$headSha, botLogins:$bots, diffPaths:$diff, protectedGlobs:$protected}' \
+            '{reviews:$reviews, prAuthor:$prAuthor, headSha:$headSha, tier:$tier, botLogins:$bots, diffPaths:$diff, protectedGlobs:$protected}' \
             | node node_modules/devloop/dist/cli/verify-review.js
 
       - name: Verify implement only un-skipped tests (test<->code seam, §11 #3)
