@@ -1,11 +1,12 @@
-// CLI: the unskip CI guard (Obol pilot §3.2/§4). Runs on the implement PR; asserts that every
-// changed test file differs from the base ONLY by removed `.skip` tokens — implement may
-// activate tests, never rewrite/add/remove them. Fail-closed (exit 1) on any violation.
+// CLI: the unskip CI guard (Obol pilot §3.2/§4). Runs on EVERY PR (spec PR + implement PR):
+//   - a NEW test file may be authored only if every test in it is `.skip`'d (spec PR);
+//   - an EXISTING test file may change ONLY by removing `.skip` (implement PR).
+// implement can thus neither author active tests nor edit existing ones. Fail-closed (exit 1).
 //
 // Usage: verify-unskip <repoPath> <baseRef>   (baseRef e.g. origin/main)
 
 import { execFileSync } from "node:child_process";
-import { isUnskipOnly } from "../core/unskip.js";
+import { isAllowedTestEdit } from "../core/unskip.js";
 
 const repo = process.argv[2] ?? ".";
 const base = process.argv[3] ?? "origin/main";
@@ -28,10 +29,13 @@ const violations: { file: string; reason: string }[] = [];
 for (const file of changed) {
   const oldContent = gitSafe(["show", `${base}:${file}`]); // "" if the file is new
   const newContent = gitSafe(["show", `HEAD:${file}`]);
-  if (!isUnskipOnly(oldContent, newContent)) {
+  if (!isAllowedTestEdit(oldContent, newContent)) {
     violations.push({
       file,
-      reason: "test file changed beyond removing `.skip` (implement must not author/edit tests)",
+      reason:
+        oldContent === ""
+          ? "new test file contains an active (non-.skip) test (spec-PR tests must be skipped)"
+          : "existing test file changed beyond removing `.skip` (implement must not edit tests)",
     });
   }
 }

@@ -49,3 +49,22 @@ test("exit 1 when implement also edited an assertion", () => {
   expect(r.status).toBe(1);
   expect(JSON.parse(r.stdout).violations[0].file).toBe("a.test.ts");
 });
+
+test("spec PR: a NEW all-skipped test file is allowed (exit 0)", () => {
+  git("checkout", "-q", "-b", "spec");
+  writeFileSync(join(repo, "b.test.ts"), `import { test, expect } from "vitest";\ntest.skip("REQ-B-1 new", () => { expect(g()).toBe(1); });\n`);
+  git("add", "-A");
+  commit("spec PR: author new skipped test");
+  const r = run();
+  expect(r.status).toBe(0);
+});
+
+test("spec PR: a NEW file with an active test is blocked (exit 1)", () => {
+  git("checkout", "-q", "-b", "spec");
+  writeFileSync(join(repo, "b.test.ts"), `import { test, expect } from "vitest";\ntest("REQ-B-1 active", () => { expect(1).toBe(1); });\n`);
+  git("add", "-A");
+  commit("spec PR: active test smuggled in");
+  const r = run();
+  expect(r.status).toBe(1);
+  expect(JSON.parse(r.stdout).violations[0].file).toBe("b.test.ts");
+});

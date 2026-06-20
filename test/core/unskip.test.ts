@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { isUnskipOnly } from "../../src/core/unskip.js";
+import { isUnskipOnly, isAllowedTestEdit, hasActiveTest } from "../../src/core/unskip.js";
 
 // The seam where the test<->code separation stands or falls (§11 #3): the independent
 // spec-to-tests station writes the COMPLETE test (skipped); implement may ONLY remove `.skip`.
@@ -40,4 +40,30 @@ test("ADDING a .skip (sneaking a test off) is FORBIDDEN", () => {
     .replace("test.skip(", "test(") // unskip the first (allowed)
     .replace('test("REQ-A-2 second"', 'test.skip("REQ-A-2 second"'); // but skip the second (forbidden)
   expect(isUnskipOnly(twoTests, next)).toBe(false);
+});
+
+// --- hasActiveTest + isAllowedTestEdit (unified rule for spec-PR vs implement-PR) ----------
+test("hasActiveTest distinguishes active test calls from fully-skipped ones", () => {
+  expect(hasActiveTest(`test("x", () => {})`)).toBe(true);
+  expect(hasActiveTest(`it("x", () => {})`)).toBe(true);
+  expect(hasActiveTest(`test.only("x", () => {})`)).toBe(true);
+  expect(hasActiveTest(`test.each([1])("x", () => {})`)).toBe(true);
+  expect(hasActiveTest(`test.skip("x", () => {});\nit.skip("y", () => {})`)).toBe(false);
+  expect(hasActiveTest(`describe.skip("g", () => { it.skip("x", () => {}); })`)).toBe(false);
+});
+
+test("a NEW test file (old empty) is allowed iff every test is skipped — spec-PR authoring", () => {
+  const allSkipped = `test.skip("REQ-A-1 a", () => { expect(f()).toBe(1); });\nit.skip("REQ-A-2 b", () => {});`;
+  expect(isAllowedTestEdit("", allSkipped)).toBe(true);
+});
+
+test("a NEW test file with any active test is FORBIDDEN (no secretly-active tests land green)", () => {
+  const oneActive = `test.skip("REQ-A-1 a", () => {});\ntest("REQ-A-2 active", () => { expect(1).toBe(1); });`;
+  expect(isAllowedTestEdit("", oneActive)).toBe(false);
+  expect(isAllowedTestEdit("", `test.only("focus", () => {})`)).toBe(false);
+});
+
+test("an EXISTING test file still follows unskip-only (implement PR)", () => {
+  expect(isAllowedTestEdit(OLD, OLD.replace("test.skip(", "test("))).toBe(true); // skip removed
+  expect(isAllowedTestEdit(OLD, OLD.replace("toBe(42)", "toBe(0)"))).toBe(false); // assertion edited
 });
