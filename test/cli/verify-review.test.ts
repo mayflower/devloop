@@ -22,7 +22,18 @@ test("exit 0 when a human approved HEAD and the diff is clean", () => {
   expect(JSON.parse(r.stdout).ok).toBe(true);
 });
 
-test("exit 1 when only the agent bot 'approved' (cannot self-approve)", () => {
+test("exit 0 (pending) when NOBODY has approved yet — no stale FAILURE on a fresh PR", () => {
+  // The authoritative 'must be approved' block is branch protection's CODEOWNER requirement,
+  // not this check. A fresh PR with zero approvals must NOT leave a failing run that lingers
+  // and blocks the merge after a later approve (the cross-event stale-FAILURE bug).
+  const r = run({ ...base, reviews: [] });
+  expect(r.status).toBe(0);
+  expect(JSON.parse(r.stdout).pending).toBe(true);
+  const onlyComment = run({ ...base, reviews: [{ user: "alice", state: "COMMENTED", commit_id: "abc123" }] });
+  expect(onlyComment.status).toBe(0);
+});
+
+test("exit 1 when an approval is PRESENT but invalid — only the agent bot 'approved' (self-approve attempt)", () => {
   const r = run({ ...base, reviews: [{ user: "agent-bot", state: "APPROVED", commit_id: "abc123" }] });
   expect(r.status).toBe(1);
   expect(JSON.parse(r.stdout).reason).toMatch(/missing/);

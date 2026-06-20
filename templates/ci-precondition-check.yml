@@ -23,6 +23,17 @@ on:
   pull_request_review:
     types: [submitted, dismissed]
 
+# Hygiene: collapse redundant runs per PR (this check fires on both events above).
+concurrency:
+  group: devloop-precondition-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+# NOTE: this check PASSES while a PR simply awaits review (no approval yet) — the authoritative
+# "must be approved" block is Branch Protection's required CODEOWNER review (see below). It only
+# FAILS on a real problem: gate-tamper, or an approval that is present but invalid (agent/author
+# self-approve, or stale). That avoids a transient FAILURE lingering across the two trigger
+# events and blocking the merge after a later approve.
+
 jobs:
   devloop-precondition-check:
     runs-on: ubuntu-latest

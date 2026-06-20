@@ -22,11 +22,9 @@ function fail(reason: string): never {
 
 const req = JSON.parse(await readStdin()) as Request;
 
-const status = evaluateApproval(req.reviews ?? [], req);
-if (status !== "ok") {
-  fail(`human-approval-${status}: no valid human PR approval on HEAD (the agent/author cannot self-approve)`);
-}
+const reviews = req.reviews ?? [];
 
+// 1. Gate-tamper fails ALWAYS, independent of approval state (reward-hacking alarm).
 if (
   req.diffPaths &&
   req.protectedGlobs &&
@@ -35,4 +33,27 @@ if (
   fail("protected-set-touched: the diff edits a guardian/gate config (reward-hacking alarm)");
 }
 
-process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+const status = evaluateApproval(reviews, req);
+if (status === "ok") {
+  process.stdout.write(JSON.stringify({ ok: true }) + "\n");
+  process.exit(0);
+}
+
+// No approval YET (nobody has approved) — non-blocking PENDING. The authoritative "must be
+// approved" gate under anchor b is branch protection's required CODEOWNER review, not this
+// check. Failing here would leave a stale FAILURE run that lingers across the pull_request /
+// pull_request_review events and blocks the merge even after a later approve.
+const anyApproved = reviews.some((r) => r.state === "APPROVED");
+if (!anyApproved) {
+  process.stdout.write(
+    JSON.stringify({
+      ok: true,
+      pending: true,
+      note: "awaiting human CODEOWNER review (enforced by branch protection)",
+    }) + "\n",
+  );
+  process.exit(0);
+}
+
+// An approval is PRESENT but not valid on HEAD (agent/author self-approve, or stale) -> fail loud.
+fail(`human-approval-${status}: an approval exists but is not a valid human approval on HEAD`);
