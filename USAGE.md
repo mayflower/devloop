@@ -52,6 +52,8 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
    > **Drift-Achtung:** Die **tier-map-T2/T3-Pfade müssen ⊆ CODEOWNER-Pfade** sein. Klafft das auseinander,
    > kann ein T2/T3-PR ohne Review auto-mergen. `verify-review` ist tier-bewusst (T0/T1 grün, Gate-Tamper +
    > Approval-Gültigkeit immer), erzwingt das „muss approved sein" aber **nicht** selbst — das tut CODEOWNERS.
+   > **Erzwungen** wird die Alignment-Pflicht vom **Drift-Wächter** `check-codeowners` (Required Check, im
+   > CI-Template): er failt, wenn ein T2/T3-tier-map-Pfad nicht von CODEOWNERS gedeckt ist (oder CODEOWNERS fehlt).
 6. **Trace-/Coverage-Gate muss `.skip`'te Tests als Abdeckung zählen** (Regex über Quelltext).
    Davon hängt ab, dass der Spec-PR `main` grün hält. Wer das weghärtet, bricht das Spec-PR-Modell still.
 7. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),

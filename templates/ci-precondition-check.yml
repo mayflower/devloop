@@ -72,6 +72,12 @@ jobs:
             | node node_modules/devloop/dist/cli/derive-tier.js > tier.json
           cat tier.json
 
+      - name: Drift guard — tier-map T2/T3 paths must be covered by CODEOWNERS (§9)
+        run: |
+          # The T2/T3 merge gate is branch protection's required CODEOWNER review. If a T2/T3
+          # tier path has no CODEOWNERS coverage, such a PR could auto-merge unreviewed.
+          node node_modules/devloop/dist/cli/check-codeowners.js .
+
       - name: Verify HUMAN approval on HEAD + no gate-tamper (fail-closed)
         env:
           GH_TOKEN: ${{ github.token }}

@@ -43,6 +43,15 @@ function normalizeTierMap(map: TierMapInput): TierMap {
   return { rules, default: map.default ?? fallback };
 }
 
+// All globs assigned to the given tiers (e.g. the T2/T3 "needs-review" paths). Accepts either
+// map shape. Used by the CODEOWNERS drift guard.
+export function tierGlobs(mapInput: TierMapInput, tiers: Tier[]): string[] {
+  const wanted = new Set(tiers);
+  return normalizeTierMap(mapInput)
+    .rules.filter((r) => wanted.has(r.tier))
+    .flatMap((r) => r.anyOf);
+}
+
 export function deriveTier(touched: string[], mapInput: TierMapInput): Tier {
   const map = normalizeTierMap(mapInput);
   if (touched.length === 0) return map.default;
