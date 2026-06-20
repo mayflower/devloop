@@ -22,6 +22,7 @@ fail-closed CI-Required-Check und GitHub-Branch-Protection.
 - `/devloop:critic` — adversarial, frischer Kontext, strukturiertes Verdikt
 - `/devloop:loop` — der Driver (orchestriert die Stationen als isolierte Subagenten)
 - `/devloop:init` — verdrahtet den CI-Bindungs-Anker in ein Ziel-Repo
+- `/devloop:cleanup` — räumt lokale, im Remote gemergte Branches + ihre Worktrees sicher auf
 
 ## Installation (Kollegen)
 

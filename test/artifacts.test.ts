@@ -61,6 +61,17 @@ test("the specify skill derives the tier via the CLI (not agent-chosen)", () => 
   expect(read("skills/specify/SKILL.md")).toMatch(/derive-tier/);
 });
 
+test("the loop skill spawns mutating stations with worktree isolation (parallel-safe)", () => {
+  const md = read("skills/loop/SKILL.md");
+  expect(md).toMatch(/worktree/i);
+  expect(md).toMatch(/isolation/i);
+});
+
+test("a /devloop:cleanup skill exists for pruning merged branches/worktrees", () => {
+  expect(has("skills/cleanup/SKILL.md")).toBe(true);
+  expect(read("skills/cleanup/SKILL.md")).toMatch(/cleanup\.js/);
+});
+
 test("the ci template carries the guardian marker string", () => {
   expect(read("templates/ci-precondition-check.yml")).toContain("devloop-precondition-check");
 });

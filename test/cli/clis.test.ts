@@ -6,10 +6,11 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const fx = (n: string) => resolve(root, "test/fixtures", n);
-const cli = (rel: string) => resolve(root, "src/cli", rel);
+// Run the built dist with node (sandbox-clean, tests the shipped artifact). `.ts` -> `.js`.
+const cli = (rel: string) => resolve(root, "dist/cli", rel.replace(/\.ts$/, ".js"));
 
 function run(script: string, args: string[] = [], input?: string) {
-  return spawnSync("npx", ["tsx", cli(script), ...args], {
+  return spawnSync("node", [cli(script), ...args], {
     encoding: "utf8",
     input,
     cwd: root,

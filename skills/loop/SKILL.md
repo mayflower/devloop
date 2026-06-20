@@ -30,7 +30,7 @@ echo '<DriverState-JSON>' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/next-action.js
 | Aktion | Was du tust |
 |---|---|
 | `REFUSE_GUARDIANS` | Stopp, Wächter melden, eskalieren. |
-| `SPAWN_STATION` | Den Subagenten `devloop-<station>` via **Task-Tool** spawnen (frischer Kontext!). Artefakt-Ergebnis übernehmen, Phase fortschreiben. **Nie inline erzeugen.** |
+| `SPAWN_STATION` | Den Subagenten `devloop-<station>` via **Task-Tool** spawnen (frischer Kontext!). **`implement` (und jede mutierende Station) mit Worktree-Isolation spawnen** (`isolation: "worktree"`), Branch `devloop/<slug>` — so kollidieren parallele Sessions nie auf demselben Arbeitsbaum (§10.2). Artefakt-Ergebnis übernehmen, Phase fortschreiben. **Nie inline erzeugen.** |
 | `RUN_GATES` | Gates auf dem **geschützten Runner** (CI = Gate of Record) triggern; **Verdikt nur von dort** (§5#1), inkl. `devloop-precondition-check`, Protected-Set-Ratchet und **server-berechnetem Tier aus dem Diff** (nicht agent-deklariert, §9). Fehler-Logs über den schmalen Rückkanal lesen (`gh pr checks`, `gh run view --log-failed`). |
 | `STOP_FOR_HUMAN` | **Turn beenden.** Übergib Kontext an den Menschen und warte. Der Stopp gilt erst als passiert, wenn ein **Mensch per GitHub-PR-Review** (CODEOWNERS) den aktuellen Stand freigibt — verifiziert durch `verify-review` auf CI (Anker b). T3-Merge ist zusätzlich durch Branch-Protection erzwungen. **Nicht** du gibst frei. |
 | `RE_GEN` | Defektsignal (Datei:Zeile:Regel / überlebende Mutante) in eine neue `implement`-Runde geben — als **Signal, nicht Lösung**. Bei `freshContext:true` neue isolierte Instanz. |

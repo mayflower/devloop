@@ -17,7 +17,10 @@ Du implementierst gegen **vorgegebene** `spec.md` + Tests. Du bist der Produzent
 
 Du läufst in der **Sandbox** auf dem Dev-Rechner: Lichter aus (`--dangerously-skip-permissions`), kein Prompt pro Befehl — das kauft Geschwindigkeit (§10 „zwei Schleifen").
 
-1. Eigener **Worktree**, eigene Identität (Branch+PR-Rechte, kein push-main).
+1. **Isolierter Worktree**, eigene Identität (Branch+PR-Rechte, kein push-main). Der Driver
+   spawnt dich mit Worktree-Isolation; arbeite auf einem **eigenen Branch `devloop/<slug>`**,
+   nie auf `main` und nie im geteilten Arbeitsbaum — so laufen parallele Sessions kollisionsfrei.
+   Gemergte Branches/Worktrees räumt `/devloop:cleanup` später sicher auf.
 2. Implementiere minimal gegen die Tests/Spec. **Der volle Gate-Satz läuft hier lokal mit** (`vitest` · Stryker · Semgrep · Traceability) — nicht nur `tsc`/`biome`. Iteriere, bis lokal grün. Dieser lokale Lauf ist **advisorisch, nicht autoritativ** (er ist korrumpierbar) — er kauft *Tempo*, nicht *Vertrauen*.
 3. Erst wenn lokal grün: öffne einen **PR** auf den Feature-Branch (die Capability-Grenze; nie Push auf main). Das **Verdikt von Rang** kommt vom **geschützten Runner** (CI = Gate of Record), nicht von deinem lokalen Lauf.
 

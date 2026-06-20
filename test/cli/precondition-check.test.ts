@@ -8,7 +8,7 @@ import { writeApproval } from "../../src/core/tokens.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
-const cli = resolve(root, "src/cli/precondition-check.ts");
+const cli = resolve(root, "dist/cli/precondition-check.js");
 
 let repo: string;
 let spec: string;
@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 function run(req: object) {
-  return spawnSync("npx", ["tsx", cli], { encoding: "utf8", input: JSON.stringify(req), cwd: root });
+  return spawnSync("node", [cli], { encoding: "utf8", input: JSON.stringify(req), cwd: root });
 }
 
 test("exits 1 (fail-closed) when the phase token is missing", () => {

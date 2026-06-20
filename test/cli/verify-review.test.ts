@@ -3,11 +3,11 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const cli = resolve(dirname(fileURLToPath(import.meta.url)), "../../src/cli/verify-review.ts");
+const cli = resolve(dirname(fileURLToPath(import.meta.url)), "../../dist/cli/verify-review.js");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 function run(req: object) {
-  return spawnSync("npx", ["tsx", cli], { encoding: "utf8", input: JSON.stringify(req), cwd: root });
+  return spawnSync("node", [cli], { encoding: "utf8", input: JSON.stringify(req), cwd: root });
 }
 
 const base = {
