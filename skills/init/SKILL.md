@@ -9,7 +9,17 @@ Macht ein Ziel-Repo in einem Schritt devloop-fähig: legt den **CI-Required-Chec
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/init.js <ziel-repo>
+# Upgrade/Migration (z.B. v0.1 -> v0.2): vorhandenen Workflow überschreiben
+node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/init.js <ziel-repo> --force
 ```
+
+> **Lies die `notes` im Output.** init überschreibt nichts still: ein vorhandener Workflow wird
+> **nicht** aktualisiert (nur mit `--force`), und eine vorhandene tier-map (`tools/tier-map.json`)
+> wird **nicht** von einer Default-Map beschattet — beides als laute `notes` gemeldet, statt nur „skipped".
+>
+> **Wichtig (by design):** Den **Workflow muss ein Mensch pushen** — eine Bot-GitHub-App ohne
+> `workflows`-Permission wird beim Push auf `.github/workflows/**` abgelehnt (gutes Sicherheitsverhalten:
+> der Agent darf die Gates nicht umschreiben). Der CI-verdrahtende Teil ist also nicht bot-automatisierbar.
 
 Danach (Anker b — die Autorität sitzt serverseitig auf GitHub):
 1. Den Workflow als **Required Status Check** auf dem geschützten Runner registrieren (Branch Protection).

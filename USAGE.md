@@ -56,6 +56,12 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
 
 > Prüfen, ob alle Wächter stehen: `devloop check-guardians <repo>` (exit 0 = bereit).
 
+**Upgrade/Migration (z.B. v0.1 → v0.2):** `init` überschreibt **nichts** still. Den veralteten
+Workflow zieht nur `init <repo> --force` nach; eine vorhandene `tools/tier-map.json` wird **nicht**
+von einer Default-Map beschattet. **Lies die `notes` im init-Output.** Den Workflow selbst muss ein
+**Mensch pushen** — eine Bot-GitHub-App ohne `workflows`-Permission wird beim Push auf
+`.github/workflows/**` abgelehnt (gewolltes Sicherheitsverhalten: der Agent darf die Gates nicht ändern).
+
 ---
 
 ## 2. Ein Feature durchlaufen
