@@ -12,12 +12,12 @@ Du erzeugst die **`spec.md`** — die Wurzel des Vertrauens (§5.1). Alles Spät
 
 1. Erarbeite mit dem Menschen eine **User Story** und **EARS-Akzeptanzkriterien**. Jedes Kriterium bekommt eine stabile ID `REQ-<CTX>-<nr>` (z.B. `REQ-AUTH-1`).
    - EARS-Typen kennzeichnen: **When** (ereignisgetrieben), **If/Then** (Zustand), **While** (kontinuierlich), **Where** (Feature), plus nicht-funktional: **Performance**, **Architektur**, **Contract**.
-2. **Tier NICHT selbst wählen.** Leite es deterministisch aus den (erwartet) berührten Pfaden gegen die Tier-Map des Ziel-Repos ab:
+2. **Tier NICHT selbst wählen.** Leite es deterministisch ab — **immer mit devloops node-CLI**, das die Tier-Map des Repos selbst robust findet (`.devloop/` → `tools/` → root, absoluter Pfad). **Nie** das repo-eigene `pnpm run tier` / ein tsx-Skript benutzen (scheitert in der Sandbox am tsx-IPC):
    ```
-   echo '{"touched":[<pfade>],"tierMap":<inhalt von .devloop/tier-map.json>}' \
+   echo '{"touched":[<pfade>],"repo":"."}' \
      | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/derive-tier.js
    ```
-   Schreibe das Ergebnis als `Tier:`-Feld in die `spec.md`. **Achtung:** dieses Tier ist **vorläufig/advisorisch** — es steuert nur Critic-Tiefe und Stopp-Strenge in der inneren Schleife. **Autoritativ** wird das Tier **aus dem tatsächlichen Diff auf CI** berechnet (§9/§10, derselbe `derive-tier` server-seitig), nie aus deiner Deklaration. Du kannst das Tier also nicht herunterspielen.
+   (Liegt die Map an einem ungewöhnlichen Ort, alternativ `{"touched":[...],"tierMap":<inhalt>}` durchreichen.) Schreibe das Ergebnis als `Tier:`-Feld in die `spec.md`. **Achtung:** dieses Tier ist **vorläufig/advisorisch** — es steuert nur Critic-Tiefe und Stopp-Strenge in der inneren Schleife. **Autoritativ** wird das Tier **aus dem tatsächlichen Diff auf CI** berechnet (§9/§10, derselbe `derive-tier` server-seitig), nie aus deiner Deklaration. Du kannst das Tier also nicht herunterspielen.
 3. Schreibe `spec.md` (User Story, Tier, Liste der `REQ-`-Kriterien mit EARS-Typ-Tag).
 
 ## Grenzen

@@ -1,7 +1,9 @@
 import { test, expect } from "vitest";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
@@ -49,5 +51,25 @@ test("derive-tier returns the highest touched tier", () => {
   });
   const r = run("derive-tier.ts", [], input);
   expect(r.status).toBe(0);
-  expect(JSON.parse(r.stdout)).toEqual({ tier: "T3" });
+  expect(JSON.parse(r.stdout).tier).toBe("T3");
+});
+
+test("derive-tier --repo mode locates the repo's tier-map by absolute path (no tsx, no module-relative load)", () => {
+  const repo = mkdtempSync(join(tmpdir(), "devloop-dt-"));
+  try {
+    mkdirSync(join(repo, "tools"), { recursive: true });
+    // Obol-style record map under tools/
+    writeFileSync(
+      join(repo, "tools/tier-map.json"),
+      JSON.stringify({ T3: ["**/migrations/**"], T2: ["services/**"], T1: ["**"] }),
+    );
+    const input = JSON.stringify({ touched: ["services/db/migrations/1.sql"], repo });
+    const r = run("derive-tier.ts", [], input);
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.tier).toBe("T3");
+    expect(out.tierMapPath).toBe(join(repo, "tools/tier-map.json"));
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
