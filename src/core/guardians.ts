@@ -48,7 +48,7 @@ function hasMutationRatchet(repo: string): boolean {
 }
 
 // Does any CI workflow reference `needle` (i.e. actually run that guard)?
-function workflowReferences(repo: string, needle: string): boolean {
+export function workflowReferences(repo: string, needle: string): boolean {
   const dir = join(repo, ".github", "workflows");
   if (!existsSync(dir) || !statSync(dir).isDirectory()) return false;
   return readdirSync(dir)

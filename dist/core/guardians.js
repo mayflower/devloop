@@ -31,7 +31,7 @@ function hasMutationRatchet(repo) {
     return names.some((n) => fileExists(join(repo, n)));
 }
 // Does any CI workflow reference `needle` (i.e. actually run that guard)?
-function workflowReferences(repo, needle) {
+export function workflowReferences(repo, needle) {
     const dir = join(repo, ".github", "workflows");
     if (!existsSync(dir) || !statSync(dir).isDirectory())
         return false;

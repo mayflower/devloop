@@ -31,5 +31,8 @@ export function initRepo(targetRepo, ciTemplate) {
     writeIfAbsent(".devloop/protected-globs.json", PROTECTED_GLOBS_SKELETON + "\n");
     writeIfAbsent(".devloop/tier-map.json", TIER_MAP_SKELETON + "\n");
     writeIfAbsent(".devloop/bot-logins.json", BOT_LOGINS_SKELETON + "\n");
+    // Anchor (b) is the default: CI is authoritative. Recorded explicitly so the local merge
+    // hook defers to CI instead of demanding the (anchor-a) local token.
+    writeIfAbsent(".devloop/config.json", JSON.stringify({ anchor: "b" }, null, 2) + "\n");
     return result;
 }

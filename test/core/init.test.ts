@@ -26,6 +26,13 @@ test("init writes the config skeleton (protected-globs + tier-map + bot-logins f
   expect(existsSync(join(repo, ".devloop/bot-logins.json"))).toBe(true);
 });
 
+test("init records the anchor explicitly as b (config.json), so the local hook defers to CI", () => {
+  initRepo(repo, TEMPLATE);
+  const cfgPath = join(repo, ".devloop/config.json");
+  expect(existsSync(cfgPath)).toBe(true);
+  expect(JSON.parse(readFileSync(cfgPath, "utf8")).anchor).toBe("b");
+});
+
 test("the bootstrapped repo then satisfies the precondition-check guardian", async () => {
   // After init, the workflow marker is present -> checkGuardians no longer reports it.
   initRepo(repo, TEMPLATE);

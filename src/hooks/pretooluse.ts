@@ -3,10 +3,11 @@
 // this hook just fails fast locally: it blocks a merge action when the t3-merge approval
 // token is absent in the project dir. Coarse on purpose (content-binding is CI's job).
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { workflowReferences } from "../core/guardians.js";
 
 export interface HookInput {
   tool_name: string;
@@ -20,23 +21,40 @@ export interface HookResult {
 
 const MERGE_PATTERN = /\b(git\s+merge|gh\s+pr\s+merge)\b/;
 
+// Which approval anchor does this repo use? Explicit .devloop/config.json wins; otherwise
+// infer anchor (b) from the wired authoritative CI check (devloop-precondition-check).
+function usesAnchorB(repo: string): boolean {
+  try {
+    const cfg = JSON.parse(readFileSync(join(repo, ".devloop", "config.json"), "utf8"));
+    if (cfg.anchor === "a") return false;
+    if (cfg.anchor === "b") return true;
+  } catch {
+    // no/invalid config -> fall through to inference
+  }
+  return workflowReferences(repo, "devloop-precondition-check");
+}
+
 export function evaluateHook(input: HookInput, repo: string): HookResult {
   if (input.tool_name !== "Bash") return { block: false };
   const command = input.tool_input?.command ?? "";
   if (!MERGE_PATTERN.test(command)) return { block: false };
 
   // Scope: this is a GLOBAL plugin hook. Only act in devloop-managed repos (those that
-  // ran /devloop:init -> have a .devloop/ dir). Elsewhere it must be a no-op, so it never
-  // interferes with merges in unrelated repos.
+  // ran /devloop:init -> have a .devloop/ dir). Elsewhere it must be a no-op.
   if (!existsSync(join(repo, ".devloop"))) return { block: false };
 
-  const tokenPresent = existsSync(join(repo, ".devloop", "t3-merge.approved"));
-  if (tokenPresent) return { block: false };
+  // Anchor (b) — the standard: CI is authoritative and tier-aware (it has the diff). The
+  // local anchor-(a) token is irrelevant and is never written here, so this hook must NOT
+  // block — that would be tier-blind and would kill the §9 T0/T1 auto-merge. Defer to CI.
+  if (usesAnchorB(repo)) return { block: false };
+
+  // Anchor (a), opt-in: the local content-bound token is the advisory fast-fail gate.
+  if (existsSync(join(repo, ".devloop", "t3-merge.approved"))) return { block: false };
   return {
     block: true,
     reason:
-      "devloop: merge blocked — no t3-merge approval token in .devloop/. " +
-      "The merge stop is human-gated (design §9). (Authoritative gate: CI precondition-check.)",
+      "devloop (anchor a): merge blocked — no local t3-merge approval token in .devloop/. " +
+      "This is the opt-in local convenience gate; anchor-b repos defer to the CI precondition-check.",
   };
 }
 
