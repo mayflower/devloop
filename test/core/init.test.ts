@@ -58,6 +58,29 @@ test("does NOT write .devloop/tier-map.json when the repo already has a tier-map
   expect(r.notes.join(" ")).toMatch(/tier-map/i);
 });
 
+test("scaffolds a CODEOWNERS covering the T2/T3 tier paths when none exists (so the drift guard is satisfiable)", async () => {
+  const r = initRepo(repo, TEMPLATE);
+  const co = join(repo, ".github/CODEOWNERS");
+  expect(existsSync(co)).toBe(true);
+  expect(r.created).toContain(".github/CODEOWNERS");
+  // self-consistent: the generated CODEOWNERS covers every T2/T3 tier glob it scaffolds for.
+  const { tierGlobs } = await import("../../src/core/tier.js");
+  const { parseCodeowners, findUncoveredTierGlobs } = await import("../../src/core/codeowners.js");
+  const map = JSON.parse(readFileSync(join(repo, ".devloop/tier-map.json"), "utf8"));
+  const uncovered = findUncoveredTierGlobs(tierGlobs(map, ["T2", "T3"]), parseCodeowners(readFileSync(co, "utf8")));
+  expect(uncovered).toEqual([]);
+});
+
+test("does NOT clobber an existing CODEOWNERS, but notes uncovered T2/T3 paths", () => {
+  mkdirSync(join(repo, "tools"), { recursive: true });
+  writeFileSync(join(repo, "tools/tier-map.json"), JSON.stringify({ T2: ["services/**"], T1: ["**"] }));
+  mkdirSync(join(repo, ".github"), { recursive: true });
+  writeFileSync(join(repo, ".github/CODEOWNERS"), "/docs/ @writer\n");
+  const r = initRepo(repo, TEMPLATE);
+  expect(readFileSync(join(repo, ".github/CODEOWNERS"), "utf8")).toBe("/docs/ @writer\n"); // untouched
+  expect(r.notes.join(" ")).toMatch(/services/); // flags the uncovered T2/T3 path
+});
+
 test("on upgrade, an existing workflow is NOT silently updated — loud note + --force overwrites", () => {
   mkdirSync(join(repo, ".github/workflows"), { recursive: true });
   writeFileSync(join(repo, ".github/workflows/devloop-precondition-check.yml"), "old-v0.1-content");

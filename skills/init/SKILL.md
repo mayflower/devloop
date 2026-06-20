@@ -26,6 +26,6 @@ Danach (Anker b — die Autorität sitzt serverseitig auf GitHub):
 2. **Branch Protection** für die zwei harten Stopps:
    - **Require a review from CODEOWNERS** (das ist der Spec-Review/T3-Merge-Mensch) + **dismiss stale approvals on push** (Content-Bindung).
    - Die **Agent-Identität von Approve/Merge ausschließen** (sie darf nur vorschlagen) und in `.devloop/bot-logins.json` eintragen → `verify-review` zählt ihre Reviews nie als Mensch-Approval.
-3. **CODEOWNERS** für die Spec-Pfade (`spec.md` / Bounded-Context) setzen — das ist der unabhängige Intent-Halter (§5.1/§10.1).
+3. **CODEOWNERS** ist das §9-Merge-Tor: `init` **scaffoldet** eine `.github/CODEOWNERS` für die T2/T3-tier-map-Pfade (mit `@OWNER`-Platzhalter — **ersetzen!**), wenn keine existiert; existiert eine, lässt `init` sie unberührt und **meldet** ungedeckte T2/T3-Pfade (`notes`). Spec-Pfade (`/.specify/specs/` o.ä.) ebenfalls eintragen. Der Drift-Wächter `check-codeowners` erzwingt die Deckung.
 4. `tier-map.json` und `protected-globs.json` ans Repo anpassen (Wirkung→Tier, geschützter Satz).
 5. Sicherstellen, dass die übrigen Wächter stehen (Mutation-Ratchet, Semgrep-Fluchttür, geschützter Satz) — sonst verweigert `/devloop:loop` zu Recht den Auto-Loop.

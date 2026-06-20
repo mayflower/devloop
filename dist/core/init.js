@@ -3,9 +3,19 @@
 // precondition-check guardian) becomes satisfiable. Idempotent: never overwrites silently.
 // Upgrade-aware: it will NOT shadow an existing tier-map, and it warns LOUDLY (notes) when an
 // existing workflow is left stale — `force` overwrites the workflow for a real migration.
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { resolveTierMapPath } from "./tier-map.js";
+import { tierGlobs } from "./tier.js";
+import { parseCodeowners, findUncoveredTierGlobs } from "./codeowners.js";
+// Convert a tier glob to a CODEOWNERS path: `services/**` -> `/services/` (anchored dir),
+// `**/auth/**` -> `auth/` (matches anywhere). A skeleton line for the human to assign owners.
+function tierGlobToCodeownersPath(glob) {
+    if (glob.startsWith("**/")) {
+        return glob.slice(3).replace(/\/\*\*$/, "/").replace(/\*\*$/, "");
+    }
+    return "/" + glob.replace(/\/\*\*$/, "/").replace(/\*\*$/, "").replace(/\*$/, "");
+}
 // Project-agnostic skeletons — the adopter tunes them in their constitution/CI.
 const PROTECTED_GLOBS_SKELETON = JSON.stringify(["**/stryker.conf.*", "**/.semgrep/**", "**/constitution.md", "**/CODEOWNERS", "**/*.eslintrc*"], null, 2);
 // Anchor (b): identities that are NOT human (the agent's bot/app account). A review by any
@@ -58,6 +68,28 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
     }
     else {
         write(".devloop/tier-map.json", TIER_MAP_SKELETON + "\n");
+    }
+    // CODEOWNERS = the §9 T2/T3 merge gate. Scaffold one covering the T2/T3 tier paths if absent;
+    // NEVER clobber an existing (curated) one — just flag uncovered paths so the human closes the drift.
+    const tierMapPath = resolveTierMapPath(targetRepo);
+    if (tierMapPath) {
+        const t2t3 = tierGlobs(JSON.parse(readFileSync(tierMapPath, "utf8")), ["T2", "T3"]);
+        const coRel = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"].find((r) => existsSync(join(targetRepo, r)));
+        if (!coRel) {
+            const owners = [...new Set(t2t3.map(tierGlobToCodeownersPath))].map((p) => `${p} @OWNER`);
+            write(".github/CODEOWNERS", "# devloop: T2/T3 tier paths require a human CODEOWNER review (the §9 merge gate).\n" +
+                "# Replace @OWNER with the real owner(s). Keep your protected set (gate configs) covered too.\n" +
+                owners.join("\n") +
+                "\n");
+        }
+        else {
+            result.skipped.push(coRel);
+            const uncovered = findUncoveredTierGlobs(t2t3, parseCodeowners(readFileSync(join(targetRepo, coRel), "utf8")));
+            if (uncovered.length > 0) {
+                result.notes.push(`CODEOWNERS (${coRel}) does not cover these T2/T3 tier paths — add owner lines, else such ` +
+                    `a PR could auto-merge unreviewed: ${uncovered.join(", ")}`);
+            }
+        }
     }
     return result;
 }
