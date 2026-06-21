@@ -135,10 +135,13 @@ Es gibt **keinen lokalen Run-State** — der Zustand wird **zustandslos aus GitH
 der Reject ist ein Defektsignal → `/devloop:resume` liest die Review-Kommentare und fährt die
 Rückkante (Impl-PR → re-implement auf demselben Branch; Spec-PR → re-spec). Du startest nie von vorn.
 
-> **Serielle Bot-PRs + „require branches up to date":** Ist diese strikte Branch-Protection an, sind
-> nach jedem Merge alle offenen Bot-PRs BEHIND → Auto-Merge feuert erst nach `gh pr update-branch`.
-> Wer T0/T1-Auto-Merge in Serie fährt, sollte den Auto-Merge-Mechanismus (repo-seitig) so bauen, dass
-> er BEHIND-Bot-PRs nach einem Base-Merge automatisch nachzieht — sonst stockt jeder zweite PR still.
+> **Auto-Merge (Variant-B vollzug von §9):** `/devloop:init` scaffoldet optional einen dünnen
+> `auto-merge.yml`-Caller der **öffentlichen reusable Workflow** `mayflower/devloop/.github/workflows/auto-merge.yml`
+> (token-frei, gepinnt, `bot-login` aus `.devloop/bot-logins.json`). Zwei Jobs: `enable-auto-merge`
+> (armt GitHubs natives Auto-Merge für Bot-PRs) und `update-behind` (zieht nach jedem main-Merge alle
+> auto-merge-armed PRs per `gh pr update-branch` nach). Damit stockt bei strikter „require branches up
+> to date"-Protection **kein** serieller T0/T1-PR mehr (kein manuelles `update-branch`). Auch dieser
+> Workflow muss vom **Menschen** gepusht werden. Auslassen, wenn du kein natives Auto-Merge willst.
 
 ---
 

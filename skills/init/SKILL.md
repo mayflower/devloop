@@ -21,11 +21,16 @@ node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/init.js <ziel-repo> --force
 > `workflows`-Permission wird beim Push auf `.github/workflows/**` abgelehnt (gutes Sicherheitsverhalten:
 > der Agent darf die Gates nicht umschreiben). Der CI-verdrahtende Teil ist also nicht bot-automatisierbar.
 
-Der erzeugte Workflow ist **token-frei & dependency-frei**: er ruft nur die öffentliche reusable
-Action `mayflower/devloop/.github/actions/precondition-check@v<version>` (von init auf die aktuelle
-Version gepinnt). Das Ziel-Repo nimmt devloop **nicht** als npm-Dependency auf — funktioniert
-org-übergreifend ohne PAT/Vendoring. Version bumpen: `/devloop:init --force` (re-pinnt) oder den
-`@v…`-Ref von Hand ändern.
+Die erzeugten Workflows sind **token-frei & dependency-frei**: sie rufen nur öffentliche, gepinnte
+devloop-Bausteine (Ziel-Repo nimmt devloop **nicht** als npm-Dependency auf; org-übergreifend ohne
+PAT/Vendoring):
+- `devloop-precondition-check.yml` → Action `mayflower/devloop/.github/actions/precondition-check@v<version>`.
+- `auto-merge.yml` (optional, Variant B) → reusable Workflow `mayflower/devloop/.github/workflows/auto-merge.yml@v<version>`
+  (`enable-auto-merge` + `update-behind`; `bot-login` aus `.devloop/bot-logins.json`). Löst das
+  BEHIND-Stocken serieller T0/T1-PRs bei strikter Branch-Protection.
+
+**Beide Workflow-Dateien muss ein Mensch pushen** (Bot ohne `workflows`-Permission). Version bumpen:
+`/devloop:init --force` (re-pinnt) oder den `@v…`-Ref von Hand ändern.
 
 Danach (Anker b — die Autorität sitzt serverseitig auf GitHub):
 1. Den Workflow als **Required Status Check** auf dem geschützten Runner registrieren (Branch Protection).

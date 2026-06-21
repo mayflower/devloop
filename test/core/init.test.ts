@@ -48,6 +48,22 @@ test("init is idempotent: second run skips existing files, never throws", () => 
   expect(second.skipped.length).toBe(first.created.length);
 });
 
+test("scaffolds the auto-merge caller workflow when given one (Variant-B vollzug of §9)", () => {
+  const r = initRepo(repo, TEMPLATE, { autoMergeCaller: "name: auto-merge\n# caller\n" });
+  expect(existsSync(join(repo, ".github/workflows/auto-merge.yml"))).toBe(true);
+  expect(r.created).toContain(".github/workflows/auto-merge.yml");
+  // workflow -> a human must push it (bot lacks the workflows permission); noted, not silent.
+  expect(r.notes.join(" ")).toMatch(/auto-merge|workflow.*push|push.*workflow/i);
+});
+
+test("does NOT clobber an existing auto-merge caller; reports it skipped", () => {
+  mkdirSync(join(repo, ".github/workflows"), { recursive: true });
+  writeFileSync(join(repo, ".github/workflows/auto-merge.yml"), "old caller");
+  const r = initRepo(repo, TEMPLATE, { autoMergeCaller: "name: auto-merge\nnew\n" });
+  expect(readFileSync(join(repo, ".github/workflows/auto-merge.yml"), "utf8")).toBe("old caller");
+  expect(r.skipped).toContain(".github/workflows/auto-merge.yml");
+});
+
 test("does NOT write .devloop/tier-map.json when the repo already has a tier-map (no shadowing)", () => {
   // Obol case: tools/tier-map.json exists; writing a default .devloop/ map would shadow it
   // (resolveTierMapPath prefers .devloop/) -> a silent gate regression.

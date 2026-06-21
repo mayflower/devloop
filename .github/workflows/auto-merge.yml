@@ -1,0 +1,66 @@
+# devloop reusable auto-merge — Variant-B vollzug of §9 (the tier-gated precondition-check
+# DECIDES; this only EXECUTES native auto-merge). Cross-org & token-free: a target repo in any org
+# calls it (jobs.x.uses: mayflower/devloop/.github/workflows/auto-merge.yml@vX) with github.token.
+#
+# Two jobs, selected by the caller's event:
+#   - enable-auto-merge (PR / review): arm GitHub native auto-merge for the BOT's non-draft PR.
+#   - update-behind (push: main): after a merge, re-sync every open PR that has auto-merge armed
+#     to its base, so `required_status_checks.strict` PRs that went BEHIND can merge without a
+#     human `gh pr update-branch`. login-agnostic (filters autoMergeRequest != null).
+
+name: devloop-auto-merge
+on:
+  workflow_call:
+    inputs:
+      bot-login:
+        description: The agent's GitHub login; only its PRs get auto-merge armed.
+        required: true
+        type: string
+      merge-method:
+        description: merge | squash | rebase (default squash).
+        required: false
+        type: string
+        default: squash
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Arm native auto-merge for the bot's non-draft PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          BOT: ${{ inputs.bot-login }}
+          METHOD: ${{ inputs.merge-method }}
+        run: |
+          if [ "$AUTHOR" = "$BOT" ] && [ "$DRAFT" != "true" ]; then
+            gh pr merge --auto "--$METHOD" "$PR" -R "$REPO" || true
+          else
+            echo "Not the bot's non-draft PR (author=$AUTHOR draft=$DRAFT) — skipping."
+          fi
+
+  update-behind:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: devloop-auto-merge-update-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Re-sync behind, auto-merge-armed PRs to base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr list -R "$REPO" --state open --json number,autoMergeRequest \
+            --jq '.[] | select(.autoMergeRequest != null) | .number' \
+          | while read -r n; do
+              [ -n "$n" ] && gh pr update-branch "$n" -R "$REPO" || true
+            done

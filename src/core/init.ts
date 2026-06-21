@@ -27,6 +27,7 @@ export interface InitResult {
 
 export interface InitOptions {
   force?: boolean; // overwrite the workflow template (migration); never touches user config files
+  autoMergeCaller?: string; // if given, scaffold the thin auto-merge caller workflow (Variant B)
 }
 
 // Project-agnostic skeletons — the adopter tunes them in their constitution/CI.
@@ -100,6 +101,20 @@ export function initRepo(
     );
   } else {
     write(".devloop/tier-map.json", TIER_MAP_SKELETON + "\n");
+  }
+
+  // Auto-merge caller (Variant-B vollzug of §9) — optional thin caller of the reusable workflow.
+  if (opts.autoMergeCaller) {
+    const rel = ".github/workflows/auto-merge.yml";
+    if (existsSync(join(targetRepo, rel))) {
+      result.skipped.push(rel);
+    } else {
+      write(rel, opts.autoMergeCaller);
+      result.notes.push(
+        `${rel} scaffolded (auto-merge, Variant B) — a HUMAN must push it (a bot lacks the ` +
+          `'workflows' permission). Omit it if you don't want native T0/T1 auto-merge.`,
+      );
+    }
   }
 
   // CODEOWNERS = the §9 T2/T3 merge gate. Scaffold one covering the T2/T3 tier paths if absent;

@@ -116,6 +116,22 @@ test("ships a reusable composite action that runs from its OWN dist (no target-r
   expect(a).toMatch(/\$GITHUB_ACTION_PATH\/dist\/cli\/(derive-tier|verify-review|verify-unskip|check-codeowners)\.js/);
 });
 
+test("ships a reusable auto-merge workflow (workflow_call) with both jobs", () => {
+  const wf = read(".github/workflows/auto-merge.yml");
+  expect(wf).toMatch(/workflow_call/);
+  expect(wf).toMatch(/enable-auto-merge/);
+  expect(wf).toMatch(/update-behind/);
+  expect(wf).toMatch(/update-branch/); // re-syncs BEHIND armed PRs
+  expect(wf).toMatch(/autoMergeRequest/); // login-agnostic filter
+});
+
+test("the auto-merge caller template calls the reusable workflow, pinned + bot-login injected", () => {
+  const t = read("templates/auto-merge.yml");
+  expect(t).toMatch(/uses:\s*mayflower\/devloop\/\.github\/workflows\/auto-merge\.yml@/);
+  expect(t).toContain("${DEVLOOP_REF}");
+  expect(t).toContain("${BOT_LOGIN}");
+});
+
 test("the ci template installs nothing — it just calls the public action, pinned and token-free", () => {
   const t = read("templates/ci-precondition-check.yml");
   expect(t).toMatch(/uses:\s*mayflower\/devloop\/\.github\/actions\/precondition-check@/);
