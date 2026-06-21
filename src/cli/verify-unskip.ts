@@ -6,10 +6,18 @@
 // Usage: verify-unskip <repoPath> <baseRef>   (baseRef e.g. origin/main)
 
 import { execFileSync } from "node:child_process";
-import { isAllowedTestEdit } from "../core/unskip.js";
+import { isAllowedTestEdit, isSpecBranch } from "../core/unskip.js";
 
 const repo = process.argv[2] ?? ".";
 const base = process.argv[3] ?? "origin/main";
+const headBranch = process.argv[4] ?? "";
+
+// Spec-PR: spec-to-tests is the legitimate test author here (gated by spec-review + vitest +
+// mutation). The unskip seam applies only to the Impl-PR. No-op pass on devloop/spec/* branches.
+if (isSpecBranch(headBranch)) {
+  process.stdout.write(JSON.stringify({ ok: true, skipped: "spec-PR (devloop/spec/*)" }) + "\n");
+  process.exit(0);
+}
 
 const gitSafe = (args: string[]): string => {
   try {

@@ -25,6 +25,10 @@ Du läufst in der **Sandbox** auf dem Dev-Rechner: Lichter aus (`--dangerously-s
 2. Implementiere minimal gegen die Tests/Spec. **Der volle Gate-Satz läuft hier lokal mit** (`vitest` · Stryker · Semgrep · Traceability) — nicht nur `tsc`/`biome`. Iteriere, bis lokal grün. Dieser lokale Lauf ist **advisorisch, nicht autoritativ** (er ist korrumpierbar) — er kauft *Tempo*, nicht *Vertrauen*.
 3. Erst wenn lokal grün: öffne einen **PR** auf den Feature-Branch (die Capability-Grenze; nie Push auf main). Das **Verdikt von Rang** kommt vom **geschützten Runner** (CI = Gate of Record), nicht von deinem lokalen Lauf.
 
+## Spec-Änderung (Amend-Modus)
+
+Liegt eine Spec-Änderung vor (der Spec-PR mit geänderten/neuen `.skip`'ten Tests ist schon auf `main`): **entskippe** die neuen + geänderten Tests, zieh den **Code** nach, bis sie grün sind, und **entferne toten Code** für entfernte REQs. An den Tests weiterhin **nur `.skip` entfernen** — die geänderten Assertions kamen von `spec-to-tests` (Spec-PR), du aktivierst sie nur (`verify-unskip` erzwingt das auf `devloop/<slug>`).
+
 ## Rückkante (äußere Schleife — CI)
 
 CI re-runt die Gates autoritativ. Kommt ein rotes Verdikt als **Defektsignal** über den schmalen Rückkanal zurück (`gh pr checks`, `gh run view --log-failed`: Datei:Zeile:Regel / überlebende Mutante), behebe den **Defekt** — nicht das Signal. Den **geschützten Satz** dabei nie anfassen (CI-Protected-Set-Ratchet greift sonst). Stagniert es, übernimmt der Driver (frischer Kontext / Eskalation).

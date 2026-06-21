@@ -6,6 +6,10 @@
 // `.skip` tokens — nothing else. Editing an assertion/title, adding/removing a test, or ADDING
 // a `.skip` anywhere (sneaking a test off — even while unskipping another) is forbidden.
 
+// Spec-PRs (devloop/spec/<slug>) are where spec-to-tests legitimately authors/amends/re-skips
+// tests; the unskip seam constrains only the Impl-PR. The driver controls the branch prefix.
+export const isSpecBranch = (branch: string): boolean => branch.startsWith("devloop/spec/");
+
 const SKIP = ".skip";
 const isWordChar = (c: string | undefined): boolean => c !== undefined && /\w/.test(c);
 // A `.skip` token only counts at a word boundary (so `.skipped` is not treated as `.skip`).

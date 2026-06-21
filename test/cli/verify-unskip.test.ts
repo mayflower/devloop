@@ -28,7 +28,8 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
-const run = () => spawnSync("node", [cli, repo, "main"], { encoding: "utf8" });
+const run = (headBranch?: string) =>
+  spawnSync("node", [cli, repo, "main", ...(headBranch ? [headBranch] : [])], { encoding: "utf8" });
 
 test("exit 0 when implement only removed .skip", () => {
   git("checkout", "-q", "-b", "impl");
@@ -48,6 +49,17 @@ test("exit 1 when implement also edited an assertion", () => {
   const r = run();
   expect(r.status).toBe(1);
   expect(JSON.parse(r.stdout).violations[0].file).toBe("a.test.ts");
+});
+
+test("on a devloop/spec/* branch verify-unskip is a no-op pass — even when a test is edited (spec-to-tests authors tests)", () => {
+  git("checkout", "-q", "-b", "devloop/spec/account");
+  // spec-to-tests legitimately changes an assertion and re-skips it on the spec PR
+  writeFileSync(join(repo, "a.test.ts"), SKIPPED.replace("toBe(42)", "toBe(7)"));
+  git("add", "-A");
+  commit("spec PR: amend a changed REQ's test");
+  const r = run("devloop/spec/account");
+  expect(r.status).toBe(0);
+  expect(JSON.parse(r.stdout).skipped).toMatch(/spec/i);
 });
 
 test("spec PR: a NEW all-skipped test file is allowed (exit 0)", () => {

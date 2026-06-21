@@ -100,6 +100,21 @@ Was passiert (Spec-PR-zuerst; der Driver gehorcht dem getesteten Kern, trifft ni
 > **Zwei PRs, zwei Mensch-Tore:** der **Spec-PR** (Schritt 5, Spec-Review §5.1) und der
 > **Implementierungs-PR** (Schritt 10, Merge-Stopp §9). Beide sind echte CODEOWNER-Reviews (Anker b).
 
+### Eine Spec ändern (Rückschleife)
+
+SDD: **erst die Spec ändern, dann den Code regenerieren.** Läuft als *dieselbe* Kette auf einem
+*bestehenden* Feature — die Stationen arbeiten amend-fähig:
+
+1. `specify` lädt die `spec.md` und ändert gezielt die betroffenen `REQ-`-Kriterien (IDs **stabil** halten).
+2. `spec-to-tests` fasst per `req-delta` **genau** die geänderten REQs an: neu → `.skip`'t; **geändert →
+   Test ändern + wieder `.skip`'en** (sonst rötet der jetzt-aktive Test `main`); entfernt → Test weg.
+3. Spec-PR auf `devloop/spec/<slug>` → Review → Merge.
+4. `implement` entskippt die neuen + geänderten Tests, zieht den **Code** nach und entfernt **toten
+   Code** für entfernte REQs. An Tests weiterhin nur `.skip` entfernen.
+
+Die **Tests sind die Change-Propagation:** geänderte Tests röten genau den betroffenen Code; `implement`
+macht sie grün. Beide Mensch-Tore + die Entskip-Naht gelten unverändert.
+
 ---
 
 ## 3. Die zwei Stopps — wie du freigibst (Anker b)

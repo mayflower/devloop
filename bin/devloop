@@ -16,6 +16,7 @@ const ALLOWED = [
   "verify-review",
   "verify-unskip",
   "check-codeowners",
+  "req-delta",
   "cleanup",
 ];
 const [sub, ...rest] = process.argv.slice(2);

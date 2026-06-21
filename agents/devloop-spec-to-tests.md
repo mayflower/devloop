@@ -25,6 +25,18 @@ Für **jede** `REQ-<CTX>-<nr>`-ID **mindestens einen** Test, getaggt mit der ID 
 - Markiere jeden mit **`.skip`** (Vitest-Familie: `test.skip`/`it.skip`/`describe.skip`). So zählt das Trace-Gate sie als Abdeckung, aber Vitest rötet nicht (red-before-green), solange der Code fehlt → der Spec-PR hält `main` grün.
 - **Du schreibst KEINEN Produktcode.** Nur Tests. `implement` darf später **ausschließlich das `.skip` entfernen** — nie deine Assertions/Titel ändern. Genau deshalb müssen deine Tests jetzt vollständig sein: was du nicht schreibst, kann `implement` nicht hinzufügen, ohne die Gewaltenteilung zu brechen (maschinell geprüft von `verify-unskip`).
 
+## Spec-Änderung (Amend-Modus)
+
+Ändert sich eine *bestehende* Spec, fasst du **nur die betroffenen REQs** an — nicht das ganze Feature. Hol das Delta deterministisch:
+```
+node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/req-delta.js <alte-spec> <neue-spec>   # {added, changed, removed}
+```
+(alte Spec: `git show <base>:<spec.md>`). Dann je Fall:
+- **added** → neuen Test, `.skip`'t (wie oben).
+- **changed** → den bestehenden Test (gleiche `REQ-`-ID) ändern **und `.skip` wieder setzen**. Sonst rötet der jetzt-aktive Test gegen den (noch alten) Code `main` beim Spec-PR-Merge. `implement` entskippt ihn später, nachdem der Code nachgezogen ist.
+- **removed** → den Test entfernen (sonst rote verwaiste `REQ-`-Referenz im Trace-Gate).
+Unveränderte Tests **nicht** anfassen (sie bleiben aktiv und grün). Das läuft alles auf dem **Spec-PR** (`devloop/spec/<slug>`); dort darfst du Tests autoren/ändern/re-skippen — `verify-unskip` greift dort nicht.
+
 ## Grenzen
 
 - Du bist **nicht** die Implement-Station; deine Unabhängigkeit von ihr ist der Sinn der Trennung.
