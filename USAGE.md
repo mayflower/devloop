@@ -121,6 +121,20 @@ SDD: **erst die Spec ändern, dann den Code regenerieren.** Läuft als *dieselbe
 Die **Tests sind die Change-Propagation:** geänderte Tests röten genau den betroffenen Code; `implement`
 macht sie grün. Beide Mensch-Tore + die Entskip-Naht gelten unverändert.
 
+### Unterbrechen & fortsetzen (`/devloop:resume`)
+
+Der Lauf hält an den Stopps an, indem er den **Turn beendet** — du kannst die Session schließen,
+später (oder woanders) auf GitHub reviewen und dann in einer **frischen** Session fortsetzen:
+
+```
+/devloop:resume 42
+```
+
+Es gibt **keinen lokalen Run-State** — der Zustand wird **zustandslos aus GitHub** rekonstruiert
+(PR-Branch → spec/impl, State, `reviewDecision`, CI-Status). Besonders nach **„changes requested":**
+der Reject ist ein Defektsignal → `/devloop:resume` liest die Review-Kommentare und fährt die
+Rückkante (Impl-PR → re-implement auf demselben Branch; Spec-PR → re-spec). Du startest nie von vorn.
+
 > **Serielle Bot-PRs + „require branches up to date":** Ist diese strikte Branch-Protection an, sind
 > nach jedem Merge alle offenen Bot-PRs BEHIND → Auto-Merge feuert erst nach `gh pr update-branch`.
 > Wer T0/T1-Auto-Merge in Serie fährt, sollte den Auto-Merge-Mechanismus (repo-seitig) so bauen, dass

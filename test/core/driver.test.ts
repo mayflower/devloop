@@ -127,6 +127,24 @@ test("T2 stops for the required reviewer before merge", () => {
   expect(nextAction(s)).toEqual({ kind: "STOP_FOR_HUMAN", stop: "merge-review" });
 });
 
+// --- Human rejection (changes requested) is a back-edge, not a dead end --------
+test("merge-pending + changes-requested -> RE_GEN (re-implement with the review as defect signal)", () => {
+  const s = base({ tier: "T2", phase: "merge-pending", gateVerdict: "green", reviewDecision: "changes-requested" });
+  const a = nextAction(s);
+  expect(a.kind).toBe("RE_GEN");
+  if (a.kind === "RE_GEN") expect(a.feedback).toBe("defect-signal");
+});
+
+test("spec-pr-open + changes-requested -> re-spec (SPAWN specify, amend per the review)", () => {
+  const s = base({ phase: "spec-pr-open", reviewDecision: "changes-requested" });
+  expect(nextAction(s)).toEqual({ kind: "SPAWN_STATION", station: "specify" });
+});
+
+test("changes-requested does not apply to T0/T1 auto-merge (no review there)", () => {
+  // reviewDecision undefined for T0/T1 -> normal auto-merge
+  expect(nextAction(base({ tier: "T1", phase: "merge-pending", gateVerdict: "green" }))).toEqual({ kind: "DONE" });
+});
+
 // --- Invariant 4: the driver never produces artifacts inline ------------------
 test("nextAction never produces artifacts inline (SPAWN_STATION is the only producer)", () => {
   const ALLOWED: Action["kind"][] = [

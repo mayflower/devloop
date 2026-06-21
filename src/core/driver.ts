@@ -49,6 +49,8 @@ export interface DriverState {
   guardians: { ok: boolean; missing: string[] };
   phase: Phase;
   humanApprovals: Partial<Record<Stop, boolean>>; // derived from verifyApproval()=="ok", NOT prompt-set
+  // The human's PR review decision (from GitHub). "changes-requested" is a defect signal -> rework.
+  reviewDecision?: "approved" | "changes-requested";
   gateVerdict?: "green" | "red";
   loop?: LoopState;
   loopParams?: LoopParams;
@@ -106,6 +108,10 @@ export function nextAction(state: DriverState): Action {
     case "spec-pr-open":
       // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust). It is
       // now a real CODEOWNER review on the spec PR (anchor b). Approved -> merge the spec.
+      // Changes requested -> re-spec (specify amends per the review), then re-review.
+      if (state.reviewDecision === "changes-requested") {
+        return { kind: "SPAWN_STATION", station: "specify" };
+      }
       return state.humanApprovals["spec-review"]
         ? { kind: "MERGE_SPEC_PR" }
         : { kind: "STOP_FOR_HUMAN", stop: "spec-review" };
@@ -124,6 +130,11 @@ export function nextAction(state: DriverState): Action {
         : handleRedGate(state);
 
     case "merge-pending":
+      // A human "changes requested" on the impl PR is a defect signal -> re-implement (the loop
+      // feeds the review comments back). Resumable across sessions: the decision lives on GitHub.
+      if (state.reviewDecision === "changes-requested") {
+        return { kind: "RE_GEN", feedback: "defect-signal", freshContext: false };
+      }
       // Invariant 3 & 6: T3 merge is human-gated; T0/T1 auto-merge.
       return handleMerge(state);
   }

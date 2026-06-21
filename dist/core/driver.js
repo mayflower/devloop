@@ -63,6 +63,10 @@ export function nextAction(state) {
         case "spec-pr-open":
             // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust). It is
             // now a real CODEOWNER review on the spec PR (anchor b). Approved -> merge the spec.
+            // Changes requested -> re-spec (specify amends per the review), then re-review.
+            if (state.reviewDecision === "changes-requested") {
+                return { kind: "SPAWN_STATION", station: "specify" };
+            }
             return state.humanApprovals["spec-review"]
                 ? { kind: "MERGE_SPEC_PR" }
                 : { kind: "STOP_FOR_HUMAN", stop: "spec-review" };
@@ -77,6 +81,11 @@ export function nextAction(state) {
                 ? { kind: "SPAWN_STATION", station: "critic" }
                 : handleRedGate(state);
         case "merge-pending":
+            // A human "changes requested" on the impl PR is a defect signal -> re-implement (the loop
+            // feeds the review comments back). Resumable across sessions: the decision lives on GitHub.
+            if (state.reviewDecision === "changes-requested") {
+                return { kind: "RE_GEN", feedback: "defect-signal", freshContext: false };
+            }
             // Invariant 3 & 6: T3 merge is human-gated; T0/T1 auto-merge.
             return handleMerge(state);
     }

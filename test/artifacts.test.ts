@@ -92,6 +92,14 @@ test("the loop skill drives the spec-PR-first flow (OPEN_SPEC_PR + MERGE_SPEC_PR
   expect(md).toMatch(/devloop\/spec\//); // spec-PR branch convention drives verify-unskip's PR-type gate
 });
 
+test("a /devloop:resume skill exists and reconstructs from GitHub via pr-state", () => {
+  expect(has("skills/resume/SKILL.md")).toBe(true);
+  const md = read("skills/resume/SKILL.md");
+  expect(md).toMatch(/pr-state/);
+  expect(md).toMatch(/next-action/);
+  expect(md.toLowerCase()).toMatch(/changes requested|rückkante/);
+});
+
 test("spec-to-tests is amend-aware for spec changes (req-delta + re-skip changed tests)", () => {
   const md = read("agents/devloop-spec-to-tests.md");
   expect(md).toMatch(/req-delta/);
