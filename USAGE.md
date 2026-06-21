@@ -59,6 +59,12 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
 7. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),
    Semgrep-Fluchttür-Regeln, geschützter Satz (CODEOWNERS). Fehlt einer, **verweigert
    `/devloop:loop` zu Recht** den Auto-Loop (`check-guardians`).
+   > **Fluchttür-Carve-out (wichtig fürs Spec-PR-Modell):** Eine „banne alle `.skip`"-Regel
+   > widerspricht dem Spec-PR (dort reiten Tests geskippt mit). Deine Fluchttür-Regel muss das
+   > **sanktionierte Skip-Idiom ausnehmen**: ein `.skip` auf einem **`REQ-`-getaggten** Test (den
+   > `implement` später entskippt). Referenz: `templates/semgrep-escape-hatches.yml`. Bare `.skip`
+   > ohne REQ-Tag und `.only`/`.todo`/`xit` bleiben verboten. So ist der grüne Pfad Wächter-Wissen,
+   > nicht Folklore (`describe.skip` um aktive `it` trifft **beide** Wächter und ist tabu).
 8. **`verify-unskip`** als Required Check auf dem Implementierungs-PR wiren (im CI-Template enthalten) —
    erzwingt, dass `implement` an Tests nur `.skip` entfernt.
 
@@ -114,6 +120,11 @@ SDD: **erst die Spec ändern, dann den Code regenerieren.** Läuft als *dieselbe
 
 Die **Tests sind die Change-Propagation:** geänderte Tests röten genau den betroffenen Code; `implement`
 macht sie grün. Beide Mensch-Tore + die Entskip-Naht gelten unverändert.
+
+> **Serielle Bot-PRs + „require branches up to date":** Ist diese strikte Branch-Protection an, sind
+> nach jedem Merge alle offenen Bot-PRs BEHIND → Auto-Merge feuert erst nach `gh pr update-branch`.
+> Wer T0/T1-Auto-Merge in Serie fährt, sollte den Auto-Merge-Mechanismus (repo-seitig) so bauen, dass
+> er BEHIND-Bot-PRs nach einem Base-Merge automatisch nachzieht — sonst stockt jeder zweite PR still.
 
 ---
 

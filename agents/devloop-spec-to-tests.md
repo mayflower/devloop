@@ -22,7 +22,7 @@ Für **jede** `REQ-<CTX>-<nr>`-ID **mindestens einen** Test, getaggt mit der ID 
 ## Die Naht — kritisch (§4)
 
 - Schreibe **vollständige** Tests: echte Assertions, echte Aufrufe der (noch nicht existierenden) API. **Keine leeren `todo`-Hülsen.** Der Test muss, einmal entskippt, echt prüfen.
-- Markiere jeden mit **`.skip`** (Vitest-Familie: `test.skip`/`it.skip`/`describe.skip`). So zählt das Trace-Gate sie als Abdeckung, aber Vitest rötet nicht (red-before-green), solange der Code fehlt → der Spec-PR hält `main` grün.
+- Markiere **jeden Einzeltest** mit **`.skip`** und **REQ-Tag im Titel** (`test.skip("REQ-AUTH-1 …", …)`). Das ist das **sanktionierte Skip-Idiom**: so zählt das Trace-Gate sie als Abdeckung, Vitest rötet nicht (red-before-green), **und** die Semgrep-Fluchttür lässt sie durch (sie nimmt `.skip` auf `REQ-`-getaggten Tests aus — siehe `templates/semgrep-escape-hatches.yml`). **Nicht `describe.skip(...)` um aktive `it(...)`** verwenden: der `describe`-Container zählt nicht als skip (verify-unskip wertet pro Einzeltest), und ein bloßes `describe.skip`/`it.skip` ohne REQ-Tag fällt in die Fluchttür. Pro-Test-`.skip` + REQ-Tag ist der einzige Pfad, der durch beide Wächter grün ist — und er ist dokumentiert, kein Zufall.
 - **Du schreibst KEINEN Produktcode.** Nur Tests. `implement` darf später **ausschließlich das `.skip` entfernen** — nie deine Assertions/Titel ändern. Genau deshalb müssen deine Tests jetzt vollständig sein: was du nicht schreibst, kann `implement` nicht hinzufügen, ohne die Gewaltenteilung zu brechen (maschinell geprüft von `verify-unskip`).
 
 ## Spec-Änderung (Amend-Modus)

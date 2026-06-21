@@ -101,3 +101,16 @@ test("spec-to-tests is amend-aware for spec changes (req-delta + re-skip changed
 test("the ci template carries the guardian marker string", () => {
   expect(read("templates/ci-precondition-check.yml")).toContain("devloop-precondition-check");
 });
+
+test("ships a reference escape-hatch rule reconciled with the spec-PR model (REQ-tagged .skip carve-out)", () => {
+  const rule = read("templates/semgrep-escape-hatches.yml");
+  expect(rule).toMatch(/\.skip/);
+  expect(rule).toMatch(/REQ-/); // the carve-out: .skip allowed only on REQ-tagged tests
+  expect(rule).toMatch(/pattern-not-regex/); // implemented as an exclusion, not just prose
+});
+
+test("spec-to-tests documents the sanctioned skip idiom (per-test .skip + REQ tag, not describe.skip)", () => {
+  const md = read("agents/devloop-spec-to-tests.md");
+  expect(md).toMatch(/REQ-Tag|REQ-getaggt/);
+  expect(md.toLowerCase()).toMatch(/describe\.skip/); // explicitly warns against it
+});

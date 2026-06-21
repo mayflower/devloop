@@ -1,0 +1,37 @@
+# devloop reference escape-hatch rule (Säule-2 guardian) — RECONCILED with the spec-PR model.
+#
+# The problem it solves: a plain "ban all .skip" escape-hatch rule contradicts devloop's spec-PR
+# model, where spec-to-tests legitimately rides tests in SKIPPED (so main stays green until
+# implement un-skips them). Without a carve-out, the spec PR is red no matter what — and teams
+# end up cargo-culting a fragile idiom (e.g. `it.effect.skip`) that only passes because the regex
+# happens to miss it. That is folklore, not guardian knowledge.
+#
+# The sanctioned skip is explicit here: a `.skip` is allowed ONLY on a REQ-tagged test (its title
+# contains REQ-<CTX>-<nr>) — the devloop spec-PR placeholder that implement will un-skip (enforced
+# by verify-unskip on the implement PR). Everything else (.only/.todo/xit/xdescribe, or a bare
+# .skip with no REQ tag) stays a forbidden escape hatch.
+#
+# Adopt or merge into your repo's escape-hatch rule (it is the Semgrep-Fluchttür guardian that
+# checkGuardians verifies). Regex-based for framework-independence; tighten to AST patterns if you
+# want stricter matching for your stack.
+
+rules:
+  - id: devloop-no-unsanctioned-test-skip
+    languages: [generic]
+    severity: ERROR
+    message: >
+      Skipped test that is not a sanctioned devloop spec-PR placeholder. A `.skip` is allowed
+      ONLY on a REQ-tagged test (title contains REQ-<CTX>-<nr>), which implement un-skips. Remove
+      the skip, or REQ-tag it if it really is a spec-PR placeholder authored by spec-to-tests.
+    patterns:
+      - pattern-regex: '\b(it|test|describe)\.skip\b'
+      # carve-out: a `.skip` whose call has a REQ-tagged title is the devloop spec-PR placeholder.
+      - pattern-not-regex: '\b(it|test|describe)\.skip\(\s*[`"''][^`"'']*REQ-[A-Z0-9]+-[0-9]+'
+
+  - id: devloop-no-focus-or-todo
+    languages: [generic]
+    severity: ERROR
+    message: >
+      Focused/todo/x-prefixed tests are escape hatches with no sanctioned use — remove them.
+    patterns:
+      - pattern-regex: '\b((it|test|describe)\.only|(it|test)\.todo|xit|xdescribe)\b'
