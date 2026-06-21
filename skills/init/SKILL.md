@@ -21,6 +21,12 @@ node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/init.js <ziel-repo> --force
 > `workflows`-Permission wird beim Push auf `.github/workflows/**` abgelehnt (gutes Sicherheitsverhalten:
 > der Agent darf die Gates nicht umschreiben). Der CI-verdrahtende Teil ist also nicht bot-automatisierbar.
 
+Der erzeugte Workflow ist **token-frei & dependency-frei**: er ruft nur die öffentliche reusable
+Action `mayflower/devloop/.github/actions/precondition-check@v<version>` (von init auf die aktuelle
+Version gepinnt). Das Ziel-Repo nimmt devloop **nicht** als npm-Dependency auf — funktioniert
+org-übergreifend ohne PAT/Vendoring. Version bumpen: `/devloop:init --force` (re-pinnt) oder den
+`@v…`-Ref von Hand ändern.
+
 Danach (Anker b — die Autorität sitzt serverseitig auf GitHub):
 1. Den Workflow als **Required Status Check** auf dem geschützten Runner registrieren (Branch Protection).
 2. **Branch Protection** für die zwei harten Stopps:

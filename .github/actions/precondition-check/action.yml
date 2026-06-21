@@ -1,0 +1,73 @@
+name: devloop-precondition-check
+description: >
+  The devloop binding anchor (§5.1/§10.1) as a reusable composite action. A target repo in ANY
+  org references it (uses: mayflower/devloop/.github/actions/precondition-check@vX) — GitHub checks
+  out this public action repo (with its committed dist/), so the target repo needs NO npm
+  dependency, NO cross-org token/PAT, and NO vendoring. github-token only reads the target's OWN
+  PR. Runs the tier (from diff), CODEOWNERS drift guard, human-approval + gate-tamper check, and
+  the unskip seam. Fail-closed.
+
+inputs:
+  github-token:
+    description: Token for `gh` (pass ${{ github.token }}). Reads the caller's own PR only.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Fetch base
+      shell: bash
+      run: git fetch origin "+refs/heads/$BASE:refs/remotes/origin/$BASE" || true
+      env:
+        BASE: ${{ github.event.pull_request.base.ref }}
+
+    - name: Compute the AUTHORITATIVE tier from the diff (§9/§10)
+      shell: bash
+      env:
+        BASE: ${{ github.event.pull_request.base.ref }}
+      run: |
+        set -o pipefail
+        DIFF=$(git diff --name-only "origin/$BASE"...HEAD | jq -R . | jq -s .)
+        jq -n --argjson touched "$DIFF" '{touched:$touched, repo:"."}' \
+          | node "$GITHUB_ACTION_PATH/dist/cli/derive-tier.js" > tier.json
+        cat tier.json
+
+    - name: Drift guard — tier-map T2/T3 paths covered by CODEOWNERS (§9)
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/dist/cli/check-codeowners.js" .
+
+    - name: Verify HUMAN approval on HEAD + no gate-tamper (fail-closed)
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        BASE: ${{ github.event.pull_request.base.ref }}
+        PR: ${{ github.event.pull_request.number }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -o pipefail
+        REVIEWS=$(gh api "repos/$REPO/pulls/$PR/reviews" \
+          --jq '[.[] | {user: .user.login, state: .state, commit_id: .commit_id}]')
+        DIFF=$(git diff --name-only "origin/$BASE"...HEAD | jq -R . | jq -s .)
+        jq -n \
+          --argjson reviews "$REVIEWS" \
+          --arg prAuthor "$AUTHOR" \
+          --arg headSha "$HEAD_SHA" \
+          --arg tier "$(jq -r .tier tier.json)" \
+          --argjson bots "$(cat .devloop/bot-logins.json)" \
+          --argjson diff "$DIFF" \
+          --argjson protected "$(cat .devloop/protected-globs.json)" \
+          '{reviews:$reviews, prAuthor:$prAuthor, headSha:$headSha, tier:$tier, botLogins:$bots, diffPaths:$diff, protectedGlobs:$protected}' \
+          | node "$GITHUB_ACTION_PATH/dist/cli/verify-review.js"
+
+    - name: Verify implement only un-skipped tests (test<->code seam, §11 #3)
+      shell: bash
+      env:
+        BASE: ${{ github.event.pull_request.base.ref }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      run: node "$GITHUB_ACTION_PATH/dist/cli/verify-unskip.js" . "origin/$BASE" "$HEAD_REF"

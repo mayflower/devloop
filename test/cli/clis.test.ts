@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
@@ -52,6 +52,20 @@ test("derive-tier returns the highest touched tier", () => {
   const r = run("derive-tier.ts", [], input);
   expect(r.status).toBe(0);
   expect(JSON.parse(r.stdout).tier).toBe("T3");
+});
+
+test("init pins the reusable action to the current version (no ${DEVLOOP_REF} placeholder leaks)", () => {
+  const repo = mkdtempSync(join(tmpdir(), "devloop-initpin-"));
+  try {
+    const r = spawnSync("node", [resolve(root, "dist/cli/init.js"), repo], { encoding: "utf8" });
+    expect(r.status).toBe(0);
+    const wf = readFileSync(join(repo, ".github/workflows/devloop-precondition-check.yml"), "utf8");
+    const version = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")).version;
+    expect(wf).toContain(`precondition-check@v${version}`);
+    expect(wf).not.toContain("${DEVLOOP_REF}");
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
 
 test("derive-tier --repo mode locates the repo's tier-map by absolute path (no tsx, no module-relative load)", () => {

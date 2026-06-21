@@ -110,6 +110,19 @@ test("the ci template carries the guardian marker string", () => {
   expect(read("templates/ci-precondition-check.yml")).toContain("devloop-precondition-check");
 });
 
+test("ships a reusable composite action that runs from its OWN dist (no target-repo npm dep)", () => {
+  const a = read(".github/actions/precondition-check/action.yml");
+  expect(a).toMatch(/using:\s*composite/);
+  expect(a).toMatch(/\$GITHUB_ACTION_PATH\/dist\/cli\/(derive-tier|verify-review|verify-unskip|check-codeowners)\.js/);
+});
+
+test("the ci template installs nothing — it just calls the public action, pinned and token-free", () => {
+  const t = read("templates/ci-precondition-check.yml");
+  expect(t).toMatch(/uses:\s*mayflower\/devloop\/\.github\/actions\/precondition-check@/);
+  expect(t).toContain("${DEVLOOP_REF}"); // init pins this to the current version
+  expect(t).not.toMatch(/node_modules\/devloop/); // no cross-org npm dependency
+});
+
 test("ships a reference escape-hatch rule reconciled with the spec-PR model (REQ-tagged .skip carve-out)", () => {
   const rule = read("templates/semgrep-escape-hatches.yml");
   expect(rule).toMatch(/\.skip/);
