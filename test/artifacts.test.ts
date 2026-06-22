@@ -113,7 +113,24 @@ test("the ci template carries the guardian marker string", () => {
 test("ships a reusable composite action that runs from its OWN dist (no target-repo npm dep)", () => {
   const a = read(".github/actions/precondition-check/action.yml");
   expect(a).toMatch(/using:\s*composite/);
-  expect(a).toMatch(/\$GITHUB_ACTION_PATH\/dist\/cli\/(derive-tier|verify-review|verify-unskip|check-codeowners)\.js/);
+  expect(a).toMatch(/\$GITHUB_ACTION_PATH\/.*\/dist\/cli\/(derive-tier|verify-review|verify-unskip|check-codeowners)\.js/);
+});
+
+// Obol v0.7.1 finding: $GITHUB_ACTION_PATH is the ACTION dir (.github/actions/precondition-check),
+// not the repo root — the committed dist/ lives at the root. A path of $GITHUB_ACTION_PATH/dist/cli
+// resolves into the (dist-less) action dir and the CLIs are "Cannot find module" at runtime for
+// every consumer. Assert each referenced path actually resolves to a shipped file, relative to the
+// action dir (the real runtime base). This is the cheap, deterministic stand-in for the consumer
+// smoke-test: it would have caught the broken path before tagging.
+test("every CLI the composite action invokes resolves to a real shipped file (relative to $GITHUB_ACTION_PATH = the action dir)", () => {
+  const actionRel = ".github/actions/precondition-check";
+  const yaml = read(`${actionRel}/action.yml`);
+  const refs = [...yaml.matchAll(/\$GITHUB_ACTION_PATH\/(\S+?\.js)/g)].map((m) => m[1]);
+  expect(refs.length).toBeGreaterThan(0);
+  for (const ref of refs) {
+    const onDisk = resolve(root, actionRel, ref); // ref is relative to $GITHUB_ACTION_PATH == action dir
+    expect(existsSync(onDisk), `action references ${ref} -> ${onDisk}, which does not exist`).toBe(true);
+  }
 });
 
 test("ships a reusable auto-merge workflow (workflow_call) with both jobs", () => {

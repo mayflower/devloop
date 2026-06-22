@@ -33,12 +33,12 @@ runs:
         set -o pipefail
         DIFF=$(git diff --name-only "origin/$BASE"...HEAD | jq -R . | jq -s .)
         jq -n --argjson touched "$DIFF" '{touched:$touched, repo:"."}' \
-          | node "$GITHUB_ACTION_PATH/dist/cli/derive-tier.js" > tier.json
+          | node "$GITHUB_ACTION_PATH/../../../dist/cli/derive-tier.js" > tier.json
         cat tier.json
 
     - name: Drift guard — tier-map T2/T3 paths covered by CODEOWNERS (§9)
       shell: bash
-      run: node "$GITHUB_ACTION_PATH/dist/cli/check-codeowners.js" .
+      run: node "$GITHUB_ACTION_PATH/../../../dist/cli/check-codeowners.js" .
 
     - name: Verify HUMAN approval on HEAD + no gate-tamper (fail-closed)
       shell: bash
@@ -63,11 +63,11 @@ runs:
           --argjson diff "$DIFF" \
           --argjson protected "$(cat .devloop/protected-globs.json)" \
           '{reviews:$reviews, prAuthor:$prAuthor, headSha:$headSha, tier:$tier, botLogins:$bots, diffPaths:$diff, protectedGlobs:$protected}' \
-          | node "$GITHUB_ACTION_PATH/dist/cli/verify-review.js"
+          | node "$GITHUB_ACTION_PATH/../../../dist/cli/verify-review.js"
 
     - name: Verify implement only un-skipped tests (test<->code seam, §11 #3)
       shell: bash
       env:
         BASE: ${{ github.event.pull_request.base.ref }}
         HEAD_REF: ${{ github.event.pull_request.head.ref }}
-      run: node "$GITHUB_ACTION_PATH/dist/cli/verify-unskip.js" . "origin/$BASE" "$HEAD_REF"
+      run: node "$GITHUB_ACTION_PATH/../../../dist/cli/verify-unskip.js" . "origin/$BASE" "$HEAD_REF"
