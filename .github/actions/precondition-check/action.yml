@@ -9,7 +9,7 @@ description: >
 
 inputs:
   github-token:
-    description: Token for `gh` (pass ${{ github.token }}). Reads the caller's own PR only.
+    description: Token for `gh` (pass the caller's `github.token`). Reads the caller's own PR only.
     required: true
 
 runs:

@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -150,4 +150,44 @@ test("spec-to-tests documents the sanctioned skip idiom (per-test .skip + REQ ta
   const md = read("agents/devloop-spec-to-tests.md");
   expect(md).toMatch(/REQ-Tag|REQ-getaggt/);
   expect(md.toLowerCase()).toMatch(/describe\.skip/); // explicitly warns against it
+});
+
+// Collect every `description:` field value (inline + folded `>`/`|` block) from an action manifest.
+function descriptionValues(yaml: string): string[] {
+  const lines = yaml.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(\s*)description:\s*(.*)$/);
+    if (!m) continue;
+    const indent = m[1].length;
+    let val = m[2];
+    if (/^[>|]/.test(val.trim())) {
+      val = "";
+      for (let j = i + 1; j < lines.length; j++) {
+        if (lines[j].trim() === "") continue;
+        const ci = lines[j].match(/^(\s*)/)![1].length;
+        if (ci <= indent) break;
+        val += lines[j].trim() + " ";
+      }
+    }
+    out.push(val);
+  }
+  return out;
+}
+
+// Wächter-der-Wächter (Obol v0.7.0 finding): GitHub template-validates composite action MANIFESTS
+// at load time, evaluating ${{ }} even inside description fields — but the `github` context is
+// absent there, so a ${{ github.token }} in a description fails to load the action fail-closed for
+// EVERY consumer. Forbid the whole class in our own manifests, not just the one occurrence.
+test("composite action manifests carry no ${{ }} expression in any description field (else the action won't load)", () => {
+  const actionsDir = ".github/actions";
+  const manifests = readdirSync(resolve(root, actionsDir))
+    .map((d) => `${actionsDir}/${d}/action.yml`)
+    .filter(has);
+  expect(manifests.length).toBeGreaterThan(0); // the precondition-check action ships here
+  for (const rel of manifests) {
+    for (const desc of descriptionValues(read(rel))) {
+      expect(desc, `${rel} has an expression in a description field`).not.toContain("${" + "{");
+    }
+  }
 });
