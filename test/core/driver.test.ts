@@ -145,6 +145,23 @@ test("changes-requested does not apply to T0/T1 auto-merge (no review there)", (
   expect(nextAction(base({ tier: "T1", phase: "merge-pending", gateVerdict: "green" }))).toEqual({ kind: "DONE" });
 });
 
+// --- Optional spec-to-twin station (twin as a pluggable capability) -----------
+test("tests-written spawns spec-to-twin when the twin is enabled (before the spec PR)", () => {
+  expect(nextAction(base({ phase: "tests-written", twinEnabled: true }))).toEqual({
+    kind: "SPAWN_STATION",
+    station: "spec-to-twin",
+  });
+});
+
+test("twin-written opens the spec PR (twin artifacts join spec + tests on the spec PR)", () => {
+  expect(nextAction(base({ phase: "twin-written", twinEnabled: true }))).toEqual({ kind: "OPEN_SPEC_PR" });
+});
+
+test("twin disabled (default) preserves the chain: tests-written goes straight to the spec PR", () => {
+  expect(nextAction(base({ phase: "tests-written" }))).toEqual({ kind: "OPEN_SPEC_PR" });
+  expect(nextAction(base({ phase: "tests-written", twinEnabled: false }))).toEqual({ kind: "OPEN_SPEC_PR" });
+});
+
 // --- Invariant 4: the driver never produces artifacts inline ------------------
 test("nextAction never produces artifacts inline (SPAWN_STATION is the only producer)", () => {
   const ALLOWED: Action["kind"][] = [
@@ -162,6 +179,7 @@ test("nextAction never produces artifacts inline (SPAWN_STATION is the only prod
     "init",
     "specified",
     "tests-written",
+    "twin-written",
     "spec-pr-open",
     "spec-merged",
     "implemented",

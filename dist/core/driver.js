@@ -59,6 +59,13 @@ export function nextAction(state) {
             // reviewer sees spec + its (skipped) tests together. No code yet -> §5.1 preserved.
             return { kind: "SPAWN_STATION", station: "spec-to-tests" };
         case "tests-written":
+            // When the twin is enabled, the independent oracle (reference model + invariants) is
+            // authored by its OWN isolated station BEFORE the spec PR, so it is reviewed together with
+            // the spec + tests. Default off -> straight to the spec PR (chain unchanged).
+            return state.twinEnabled
+                ? { kind: "SPAWN_STATION", station: "spec-to-twin" }
+                : { kind: "OPEN_SPEC_PR" };
+        case "twin-written":
             return { kind: "OPEN_SPEC_PR" };
         case "spec-pr-open":
             // Invariant 2: the spec-review stop is hard for every tier (§5.1 root of trust). It is
