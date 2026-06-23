@@ -1,6 +1,6 @@
 {
   "name": "devloop",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "Generische agentische Dev-Loop-Kette: /devloop:specify|spec-to-tests|implement|critic|loop + Bindungs-Anker (Wächter-Vorbedingung, content-gebundene Stopps, CI-Required-Check). Projektübergreifend.",
   "author": { "name": "Tobias Mogdans" }
 }
