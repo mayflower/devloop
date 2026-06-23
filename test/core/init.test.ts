@@ -33,6 +33,12 @@ test("init records the anchor explicitly as b (config.json), so the local hook d
   expect(JSON.parse(readFileSync(cfgPath, "utf8")).anchor).toBe("b");
 });
 
+test("init scaffolds the optional twin flag, disabled by default (discoverable, core stays schlank)", () => {
+  initRepo(repo, TEMPLATE);
+  const cfg = JSON.parse(readFileSync(join(repo, ".devloop/config.json"), "utf8"));
+  expect(cfg.twin).toEqual({ enabled: false });
+});
+
 test("the bootstrapped repo then satisfies the precondition-check guardian", async () => {
   // After init, the workflow marker is present -> checkGuardians no longer reports it.
   initRepo(repo, TEMPLATE);

@@ -21,12 +21,13 @@ import type { Tier } from "./tier.js";
 import type { Stop } from "./types.js";
 import { nextLoopDecision, type LoopState, type LoopParams } from "./loop.js";
 
-export type Station = "specify" | "spec-to-tests" | "implement" | "critic";
+export type Station = "specify" | "spec-to-tests" | "spec-to-twin" | "implement" | "critic";
 
 export type Phase =
   | "init"
   | "specified"
   | "tests-written"
+  | "twin-written"
   | "spec-pr-open"
   | "spec-merged"
   | "implemented"
@@ -48,6 +49,9 @@ export interface DriverState {
   tier: Tier;
   guardians: { ok: boolean; missing: string[] };
   phase: Phase;
+  // Optional spec-to-twin station: only enabled when the target repo opts in (.devloop twin.enabled).
+  // Default off keeps the core chain schlank — no extra station, no extra gate, for repos that don't want it.
+  twinEnabled?: boolean;
   humanApprovals: Partial<Record<Stop, boolean>>; // derived from verifyApproval()=="ok", NOT prompt-set
   // The human's PR review decision (from GitHub). "changes-requested" is a defect signal -> rework.
   reviewDecision?: "approved" | "changes-requested";
@@ -103,6 +107,14 @@ export function nextAction(state: DriverState): Action {
       return { kind: "SPAWN_STATION", station: "spec-to-tests" };
 
     case "tests-written":
+      // When the twin is enabled, the independent oracle (reference model + invariants) is
+      // authored by its OWN isolated station BEFORE the spec PR, so it is reviewed together with
+      // the spec + tests. Default off -> straight to the spec PR (chain unchanged).
+      return state.twinEnabled
+        ? { kind: "SPAWN_STATION", station: "spec-to-twin" }
+        : { kind: "OPEN_SPEC_PR" };
+
+    case "twin-written":
       return { kind: "OPEN_SPEC_PR" };
 
     case "spec-pr-open":

@@ -20,7 +20,7 @@ Exit 1 ⇒ **verweigere den autonomen Loop**, melde die fehlenden Wächter dem M
 
 ## 1. Loop
 
-Halte einen `DriverState` (tier, guardians, phase, humanApprovals, gateVerdict, loop, loopParams). `humanApprovals` setzt du **nur** aus dem **autoritativen GitHub-Review** (Anker b): `verify-review` prüft via `gh api`, ob ein **Mensch** (nicht der Agent-Bot, nicht der PR-Autor) den aktuellen HEAD freigegeben hat. Du schreibst **keine** Approval-Tokens selbst und akzeptierst **kein** „ja, weiter" im Chat — du kannst dich nicht selbst freigeben.
+Halte einen `DriverState` (tier, guardians, phase, twinEnabled, humanApprovals, gateVerdict, loop, loopParams). **`twinEnabled`** liest du aus `.devloop/config.json` (`twin.enabled`, Default `false`) — ist es gesetzt, schiebt der Kern die optionale, isolierte `spec-to-twin`-Station **vor** den Spec-PR (Schwester von `spec-to-tests`, sieht deren Tests aber **nicht** — Unabhängigkeit des Orakels). `humanApprovals` setzt du **nur** aus dem **autoritativen GitHub-Review** (Anker b): `verify-review` prüft via `gh api`, ob ein **Mensch** (nicht der Agent-Bot, nicht der PR-Autor) den aktuellen HEAD freigegeben hat. Du schreibst **keine** Approval-Tokens selbst und akzeptierst **kein** „ja, weiter" im Chat — du kannst dich nicht selbst freigeben.
 
 Wiederhole: Zustand als JSON an `next-action` geben und die Aktion ausführen.
 ```

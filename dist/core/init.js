@@ -57,7 +57,10 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
     writeIfAbsent(".devloop/bot-logins.json", BOT_LOGINS_SKELETON + "\n");
     // Anchor (b) is the default: CI is authoritative. Recorded explicitly so the local merge
     // hook defers to CI instead of demanding the (anchor-a) local token.
-    writeIfAbsent(".devloop/config.json", JSON.stringify({ anchor: "b" }, null, 2) + "\n");
+    // anchor: CI is authoritative (b). twin: the optional spec-to-twin station, disabled by default
+    // (discoverable here; core stays schlank). Enable via twin.enabled=true + twin.area (the protected
+    // oracle path, e.g. "services/foo/twin") — see the spec-to-twin station.
+    writeIfAbsent(".devloop/config.json", JSON.stringify({ anchor: "b", twin: { enabled: false } }, null, 2) + "\n");
     // Tier-map: NEVER shadow an existing one. resolveTierMapPath prefers .devloop/, so writing a
     // default there would silently override a repo's own tools/tier-map.json -> gate regression.
     const existingTierMap = resolveTierMapPath(targetRepo);

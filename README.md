@@ -18,6 +18,7 @@ fail-closed CI-Required-Check und GitHub-Branch-Protection.
 
 - `/devloop:specify` — führt zur `spec.md` (EARS + `REQ-`-IDs + deterministisch abgeleitetes Tier)
 - `/devloop:spec-to-tests` — Test-Skeletons je `REQ-`-ID, geroutet nach EARS-Typ
+- `/devloop:spec-to-twin` — *(optional, `.devloop` `twin.enabled`)* unabhängiges Verhaltens-Orakel (triviales Referenzmodell + REQ-getaggte Invarianten + fast-check model-based) aus Domänen-Wahrheiten — Korrektheit statt nur Spec-Treue
 - `/devloop:implement` — konsumiert Spec+Tests, öffnet PR (schreibt Spec/Tests nicht selbst)
 - `/devloop:critic` — adversarial, frischer Kontext, strukturiertes Verdikt
 - `/devloop:loop` — der Driver (orchestriert die Stationen als isolierte Subagenten)

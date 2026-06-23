@@ -90,7 +90,12 @@ Was passiert (Spec-PR-zuerst; der Driver gehorcht dem getesteten Kern, trifft ni
 2. **specify** (Subagent) → `spec.md` (User Story, EARS-Kriterien mit `REQ-`-IDs, vorläufiges Tier).
 3. **spec-to-tests** (eigener Subagent) → zu jeder `REQ-`-ID **vollständige, aber `.skip`'te** Tests
    (nach EARS-Typ). `main` bleibt grün (Trace zählt Skips, Vitest rötet nicht).
-4. **Spec-PR öffnen** (`OPEN_SPEC_PR`) → Spec + geskippte Tests als eigener PR gegen `main`.
+   - *(optional, nur bei `.devloop` `twin.enabled`)* **spec-to-twin** läuft als **eigener** Subagent
+     (sieht die Tests **nicht**) und legt ein unabhängiges Verhaltens-**Orakel** dazu: triviales
+     Referenzmodell + REQ-getaggte Invarianten + Adapter + fast-check `modelRun`, `.skip`'t, im
+     geschützten Twin-Pfad — aus Domänen-Wahrheiten, **nicht** aus den EARS-Kriterien (Anti-Re-Anchor).
+     Wandert mit auf den Spec-PR (prüft Korrektheit, nicht nur Spec-Treue).
+4. **Spec-PR öffnen** (`OPEN_SPEC_PR`) → Spec + geskippte Tests (+ ggf. Twin) als eigener PR gegen `main`.
 5. **▣ STOPP: Spec-Review** — der Driver beendet den Turn. **Du/ein zweiter Mensch** reviewst
    den Spec-PR (Spec *und* Tests zusammen) und gibst ihn per **GitHub-CODEOWNER-Review** frei (§3).
 6. **Spec mergen** (`MERGE_SPEC_PR`) → Spec-PR nach `main`, `git pull`. `implement` baut auf `main`.
@@ -169,7 +174,7 @@ Stand gebunden.
 ## 4. Einzelne Stationen ohne Orchestrierung
 
 Jede Station gibt es auch als Einzel-Skill (ohne die harten Stopps), z.B. zum Üben:
-`/devloop:specify`, `/devloop:spec-to-tests`, `/devloop:implement`, `/devloop:critic`.
+`/devloop:specify`, `/devloop:spec-to-tests`, `/devloop:spec-to-twin` *(optional)*, `/devloop:implement`, `/devloop:critic`.
 Für den echten, abgesicherten Lauf nimm `/devloop:loop`.
 
 ---
