@@ -41,6 +41,14 @@ test("semgrep wired via CI (Obol-style tools/semgrep-*.yml, no .semgrep dir) is 
   expect(r).toEqual({ ok: true, missing: [] });
 });
 
+test("monorepo per-service stryker config (services/<svc>/api/) is detected", () => {
+  // bsk pilot layout: the mutation ratchet lives per-service, not at the repo root. A
+  // root-only check was a systematic false negative that forced guardian overrides.
+  const r = checkGuardians(fx("repo-stryker-in-service"));
+  expect(r.missing).not.toContain("mutation-ratchet");
+  expect(r).toEqual({ ok: true, missing: [] });
+});
+
 test("each missing-fixture reports exactly its one missing guardian", () => {
   expect(checkGuardians(fx("repo-missing-stryker")).missing).toEqual(["mutation-ratchet"]);
   expect(checkGuardians(fx("repo-missing-semgrep")).missing).toEqual(["semgrep-escape-hatch"]);
