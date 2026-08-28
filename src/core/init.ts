@@ -37,6 +37,23 @@ const PROTECTED_GLOBS_SKELETON = JSON.stringify(
   2,
 );
 
+// Which test paths the unskip seam (§11) binds. The skeleton is the FAIL-CLOSED default —
+// `**` = every test file, i.e. exactly the pre-v0.8.1 behaviour. Narrow it to the paths
+// spec-to-tests actually authors (the caged services / twin areas), otherwise a plain PR that
+// adds an ordinary active test file cannot pass the guard. Lives in `.devloop/` = the protected
+// set, so an agent cannot widen it to smuggle its own tests past the seam.
+const MANAGED_TESTS_SKELETON = JSON.stringify(
+  {
+    _comment:
+      "Globs of the DEVLOOP-MANAGED test files (written by spec-to-tests, only un-skippable by implement). " +
+      "Narrow these to your caged areas; ordinary tests outside them are not bound by the unskip seam. " +
+      "Delete this file to fall back to 'every test file is managed'.",
+    globs: ["**"],
+  },
+  null,
+  2,
+);
+
 // Anchor (b): identities that are NOT human (the agent's bot/app account). A review by any
 // of these never counts as a human approval. The adopter fills in their agent's login(s).
 const BOT_LOGINS_SKELETON = JSON.stringify(["devloop-agent[bot]"], null, 2);
@@ -86,6 +103,12 @@ export function initRepo(
 
   writeIfAbsent(".devloop/protected-globs.json", PROTECTED_GLOBS_SKELETON + "\n");
   writeIfAbsent(".devloop/bot-logins.json", BOT_LOGINS_SKELETON + "\n");
+  writeIfAbsent(".devloop/managed-tests.json", MANAGED_TESTS_SKELETON + "\n");
+  result.notes.push(
+    ".devloop/managed-tests.json scopes the unskip seam (§11). The skeleton (`**`) binds EVERY " +
+      "test file — the fail-closed default. Narrow it to the paths spec-to-tests authors, else a " +
+      "normal PR adding an ordinary active test file is rejected by verify-unskip.",
+  );
   // Anchor (b) is the default: CI is authoritative. Recorded explicitly so the local merge
   // hook defers to CI instead of demanding the (anchor-a) local token.
   // anchor: CI is authoritative (b). twin: the optional spec-to-twin station, disabled by default
