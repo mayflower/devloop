@@ -26,6 +26,14 @@ test("init writes the config skeleton (protected-globs + tier-map + bot-logins f
   expect(existsSync(join(repo, ".devloop/bot-logins.json"))).toBe(true);
 });
 
+test("init scaffolds the unskip-seam scope at its FAIL-CLOSED default (`**` = today's behaviour)", () => {
+  const r = initRepo(repo, TEMPLATE);
+  const raw = readFileSync(join(repo, ".devloop/managed-tests.json"), "utf8");
+  expect(JSON.parse(raw).globs).toEqual(["**"]); // no adopter gets looser by upgrading
+  // the knob is only useful if the human is told to narrow it — say so, do not scaffold silently
+  expect(r.notes.join(" ")).toMatch(/managed-tests\.json/);
+});
+
 test("init records the anchor explicitly as b (config.json), so the local hook defers to CI", () => {
   initRepo(repo, TEMPLATE);
   const cfgPath = join(repo, ".devloop/config.json");

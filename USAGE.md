@@ -23,7 +23,7 @@ CI + Branch-Protection.
 ```
 
 Das legt an: den CI-Workflow `devloop-precondition-check.yml` und das Config-Skeleton
-`.devloop/{tier-map,protected-globs,bot-logins}.json`.
+`.devloop/{tier-map,protected-globs,bot-logins,managed-tests}.json`.
 
 Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
 
@@ -43,6 +43,11 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      Admin-Override statt eines normalen Reviews.
    - `.devloop/bot-logins.json` — die GitHub-Login(s) **deines Agenten** (damit seine
      „Approvals" nie als Mensch zählen).
+   - `.devloop/managed-tests.json` — **welche Testpfade devloop verwaltet** (Glob-Liste). Nur für
+     die gilt die Unskip-Naht (§11). Das Skeleton ist `["**"]` = *jede* Testdatei; **eng ziehen**
+     auf die Pfade, die `spec-to-tests` wirklich autort (deine Käfig-Services / Twin-Areas),
+     sonst blockiert `verify-unskip` jeden gewöhnlichen PR, der eine normale aktive Testdatei
+     hinzufügt. Fehlt die Datei (oder ist sie kaputt), gilt fail-closed „alles verwaltet".
 5. **CODEOWNERS = das §9-Merge-Tor (wichtig).** CODEOWNERS muss decken:
    - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig;
    - **alle T2/T3-Pfade aus deiner `tier-map`** (auth, migrations, contracts, `src/**`, …).
@@ -67,6 +72,12 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
    > nicht Folklore (`describe.skip` um aktive `it` trifft **beide** Wächter und ist tabu).
 8. **`verify-unskip`** als Required Check auf dem Implementierungs-PR wiren (im CI-Template enthalten) —
    erzwingt, dass `implement` an Tests nur `.skip` entfernt.
+   > **Umfang setzen (sonst Fehlalarm):** Die Naht gilt für die Pfade in
+   > `.devloop/managed-tests.json`. Steht dort das Skeleton `["**"]`, gilt sie für **jede**
+   > Testdatei im Repo — dann kann auch ein PR, der mit devloop nichts zu tun hat (ein
+   > Dev-Werkzeug mit eigenen Tests), keine aktive Testdatei mehr hinzufügen. Zieh die Liste auf
+   > deine Käfig-Services eng. Maßgeblich ist die Liste auf dem **Basis-Branch**, nicht die im
+   > PR — ein PR kann sich die Ausnahme nicht selbst ausstellen.
 
 > Prüfen, ob alle Wächter stehen: `devloop check-guardians <repo>` (exit 0 = bereit).
 

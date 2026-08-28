@@ -3,10 +3,23 @@
 //   - an EXISTING test file may change ONLY by removing `.skip` (implement PR).
 // implement can thus neither author active tests nor edit existing ones. Fail-closed (exit 1).
 //
-// Usage: verify-unskip <repoPath> <baseRef>   (baseRef e.g. origin/main)
+// SCOPE: the seam applies to the tests devloop MANAGES (those `spec-to-tests` derives from a
+// reviewed spec), not to every test file in the repo. The target repo declares them in
+// `.devloop/managed-tests.json` (glob list) — a file inside the protected set, so an agent
+// cannot widen it. No such file => every test file is managed (today's behaviour, fail-closed).
+// Deliberately NOT branch-name-driven: an agent chooses its own branch name.
+//
+// Usage: verify-unskip <repoPath> <baseRef> [headBranch]   (baseRef e.g. origin/main)
 
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { isAllowedTestEdit, isSpecBranch } from "../core/unskip.js";
+import {
+  MANAGED_TESTS_PATH,
+  isManagedTestPath,
+  parseManagedTestGlobs,
+} from "../core/managed-tests.js";
 
 const repo = process.argv[2] ?? ".";
 const base = process.argv[3] ?? "origin/main";
@@ -21,7 +34,12 @@ if (isSpecBranch(headBranch)) {
 
 const gitSafe = (args: string[]): string => {
   try {
-    return execFileSync("git", ["-C", repo, ...args], { encoding: "utf8" });
+    // stderr ignored: `git show <ref>:<new file>` legitimately fails for every file the PR adds
+    // (and for an absent config) — the "fatal: path ... does not exist" noise is not a finding.
+    return execFileSync("git", ["-C", repo, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
   } catch {
     return "";
   }
@@ -29,9 +47,29 @@ const gitSafe = (args: string[]): string => {
 
 const TEST_FILE = /\.(test|spec)\.[jt]sx?$/;
 
-const changed = gitSafe(["diff", "--name-only", `${base}...HEAD`])
+// The glob list is read from the BASE ref first: the scope that is already on the protected
+// branch decides, so a PR cannot loosen the seam for itself. Only if the file does not exist on
+// base do we fall back to the checkout (a repo adopting the file — that PR necessarily touches
+// `.devloop/**` = the protected set and is already flagged by verify-review).
+const readWorktree = (rel: string): string => {
+  try {
+    return readFileSync(join(repo, rel), "utf8");
+  } catch {
+    return "";
+  }
+};
+const fromBase = gitSafe(["show", `${base}:${MANAGED_TESTS_PATH}`]);
+const fromWorktree = fromBase === "" ? readWorktree(MANAGED_TESTS_PATH) : "";
+const managedRaw = fromBase !== "" ? fromBase : fromWorktree;
+const managedSource = fromBase !== "" ? "base" : fromWorktree !== "" ? "worktree" : "default";
+const managedGlobs = parseManagedTestGlobs(managedRaw);
+
+const testFiles = gitSafe(["diff", "--name-only", `${base}...HEAD`])
   .split("\n")
   .filter((f) => TEST_FILE.test(f));
+
+const changed = testFiles.filter((f) => isManagedTestPath(f, managedGlobs));
+const unmanaged = testFiles.filter((f) => !isManagedTestPath(f, managedGlobs));
 
 const violations: { file: string; reason: string }[] = [];
 for (const file of changed) {
@@ -49,5 +87,20 @@ for (const file of changed) {
 }
 
 const ok = violations.length === 0;
-process.stdout.write(JSON.stringify({ ok, base, checked: changed, violations }, null, 2) + "\n");
+process.stdout.write(
+  JSON.stringify(
+    {
+      ok,
+      base,
+      // Which scope was in force — printed so a green run is never silently a disarmed one.
+      managed: managedGlobs === null ? "all-test-files (no .devloop/managed-tests.json)" : managedGlobs,
+      managedSource,
+      checked: changed,
+      unmanaged,
+      violations,
+    },
+    null,
+    2,
+  ) + "\n",
+);
 process.exit(ok ? 0 : 1);
