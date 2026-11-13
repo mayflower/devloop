@@ -11,6 +11,8 @@ export interface PrFacts {
   merged: boolean;
   reviewDecision: "approved" | "changes-requested" | "none";
   checks: "green" | "red" | "pending";
+  // `gh pr view --json isDraft`. Absent = not draft.
+  draft?: boolean;
 }
 
 export interface Reconstructed {
@@ -18,6 +20,7 @@ export interface Reconstructed {
   humanApprovals: Partial<Record<Stop, boolean>>;
   reviewDecision?: "approved" | "changes-requested";
   gateVerdict?: "green" | "red";
+  ready?: boolean; // impl PR is out of draft (= the critic accepted it)
   done: boolean;
 }
 
@@ -51,6 +54,7 @@ export function reconstructState(facts: PrFacts): Reconstructed {
   // Implementation PR.
   if (facts.merged) {
     out.phase = "merge-pending";
+    out.ready = true;
     out.done = true; // feature already merged — nothing to do
     return out;
   }
@@ -63,9 +67,17 @@ export function reconstructState(facts: PrFacts): Reconstructed {
     out.phase = "implemented"; // gates still running — observe / await CI
     return out;
   }
-  // checks green -> at the merge gate; the review decision drives what happens next.
+  if (facts.draft === true) {
+    // Green but still draft: the critic has not accepted yet (REQ-BIND-4) -> back to the critic,
+    // never merge-pending, whatever the review decision says.
+    out.phase = "gated";
+    out.gateVerdict = "green";
+    return out;
+  }
+  // checks green, ready for review -> at the merge gate; the review decision drives what's next.
   out.phase = "merge-pending";
   out.gateVerdict = "green";
+  out.ready = true;
   if (facts.reviewDecision === "approved") {
     out.humanApprovals["merge-review"] = true;
     out.humanApprovals["t3-merge"] = true; // GitHub approval satisfies whichever the tier needs

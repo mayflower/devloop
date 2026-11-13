@@ -9,7 +9,7 @@ if (!pr) {
     process.stderr.write("usage: pr-state <repoPath> <prNumber>\n");
     process.exit(64);
 }
-const raw = execFileSync("gh", ["pr", "view", pr, "--json", "headRefName,state,reviewDecision,statusCheckRollup"], { cwd: repo, encoding: "utf8" });
+const raw = execFileSync("gh", ["pr", "view", pr, "--json", "headRefName,state,reviewDecision,statusCheckRollup,isDraft"], { cwd: repo, encoding: "utf8" });
 const v = JSON.parse(raw);
 const reviewMap = {
     APPROVED: "approved",
@@ -20,5 +20,6 @@ const facts = {
     merged: v.state === "MERGED",
     reviewDecision: reviewMap[v.reviewDecision ?? ""] ?? "none",
     checks: rollupStatus(v.statusCheckRollup ?? []),
+    draft: v.isDraft === true,
 };
 process.stdout.write(JSON.stringify({ pr: Number(pr), facts, reconstructed: reconstructState(facts) }, null, 2) + "\n");

@@ -14,13 +14,14 @@ if (!pr) {
 
 const raw = execFileSync(
   "gh",
-  ["pr", "view", pr, "--json", "headRefName,state,reviewDecision,statusCheckRollup"],
+  ["pr", "view", pr, "--json", "headRefName,state,reviewDecision,statusCheckRollup,isDraft"],
   { cwd: repo, encoding: "utf8" },
 );
 const v = JSON.parse(raw) as {
   headRefName: string;
   state: string;
   reviewDecision: string | null;
+  isDraft?: boolean;
   statusCheckRollup?: { status?: string; conclusion?: string }[];
 };
 
@@ -33,6 +34,7 @@ const facts: PrFacts = {
   merged: v.state === "MERGED",
   reviewDecision: reviewMap[v.reviewDecision ?? ""] ?? "none",
   checks: rollupStatus(v.statusCheckRollup ?? []),
+  draft: v.isDraft === true,
 };
 
 process.stdout.write(
