@@ -97,8 +97,8 @@ test("rollupStatus maps GitHub check rollups", () => {
   expect(rollupStatus([{ status: "COMPLETED", conclusion: "SUCCESS" }, { status: "COMPLETED", conclusion: "FAILURE" }])).toBe("red");
 });
 
-// Typ-Wächter (REQ-BIND-4): `draft` ist Pflichtfeld. Ist es optional, ist das Literal gültig, das
-// @ts-expect-error unbenutzt und `npm run typecheck` wird rot (fehlendes draft wirkte sonst als "nicht Draft" = fail-open).
+// Typ-Wächter (REQ-BIND-4): `draft` ist Pflichtfeld. Ist es optional, ist das Literal gültig, die
+// expect-error-Direktive unbenutzt und `npm run typecheck` wird rot (fehlendes draft wirkte sonst als "nicht Draft" = fail-open).
 test("[REQ-BIND-4] PrFacts.draft ist Pflichtfeld (Typ-Wächter via npm run typecheck)", () => {
   // @ts-expect-error draft fehlt: muss ein Typfehler sein
   const missing: PrFacts = { headBranch: "devloop/x", merged: false, reviewDecision: "none", checks: "green" };
