@@ -7,6 +7,7 @@ const facts = (over: Partial<PrFacts>): PrFacts => ({
   merged: false,
   reviewDecision: "none",
   checks: "green",
+  draft: false,
   ...over,
 });
 
@@ -94,4 +95,12 @@ test("rollupStatus maps GitHub check rollups", () => {
   expect(rollupStatus([{ status: "IN_PROGRESS" }])).toBe("pending");
   expect(rollupStatus([{ status: "COMPLETED", conclusion: "SUCCESS" }, { status: "COMPLETED", conclusion: "SKIPPED" }])).toBe("green");
   expect(rollupStatus([{ status: "COMPLETED", conclusion: "SUCCESS" }, { status: "COMPLETED", conclusion: "FAILURE" }])).toBe("red");
+});
+
+// Typ-Wächter (REQ-BIND-4): `draft` ist Pflichtfeld. Ist es optional, ist das Literal gültig, das
+// @ts-expect-error unbenutzt und `npm run typecheck` wird rot (fehlendes draft wirkte sonst als "nicht Draft" = fail-open).
+test("[REQ-BIND-4] PrFacts.draft ist Pflichtfeld (Typ-Wächter via npm run typecheck)", () => {
+  // @ts-expect-error draft fehlt: muss ein Typfehler sein
+  const missing: PrFacts = { headBranch: "devloop/x", merged: false, reviewDecision: "none", checks: "green" };
+  expect(missing.headBranch).toBe("devloop/x");
 });
