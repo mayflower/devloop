@@ -7,4 +7,4 @@ description: Adversarialer Review mit frischem Kontext, geprimt auf Widerlegung;
 
 Standalone-Form. Im orchestrierten Lauf nutze **`/devloop:loop`**.
 
-Folge `agents/devloop-critic.md`: widerlege, dass die Arbeit fertig ist — nicht abgedeckte `REQ-`-IDs, Happy-Path-only, semantische Drift, überlebende Mutanten. Nur lesen. Bei T3 Security/Threat-Lens **und** Proposal-Prüfung (§6.6b). Output: strukturiertes Verdikt, im Zweifel `rejected` mit konkretem Befund.
+Folge `agents/devloop-critic.md`: widerlege, dass die Arbeit fertig ist — nicht abgedeckte `REQ-`-IDs, Happy-Path-only, semantische Drift, überlebende Mutanten. Nur lesen. Bei T3 Security/Threat-Lens **und** Proposal-Prüfung (§6.6b). Output: JSON mit `findings` nach dem Schema in `agents/devloop-critic.md` (je Befund `req`, `klasse`, `datei`, `severity`, `claim`, `evidence`); das Verdikt wird aus dem Ledger abgeleitet, ein Selbst-Label zählt nicht.
