@@ -11,8 +11,7 @@ export interface PrFacts {
   merged: boolean;
   reviewDecision: "approved" | "changes-requested" | "none";
   checks: "green" | "red" | "pending";
-  // `gh pr view --json isDraft`. Absent = not draft.
-  draft?: boolean;
+  draft: boolean; // `gh pr view --json isDraft`
 }
 
 export interface Reconstructed {

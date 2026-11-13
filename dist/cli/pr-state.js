@@ -11,6 +11,10 @@ if (!pr) {
 }
 const raw = execFileSync("gh", ["pr", "view", pr, "--json", "headRefName,state,reviewDecision,statusCheckRollup,isDraft"], { cwd: repo, encoding: "utf8" });
 const v = JSON.parse(raw);
+if (typeof v.isDraft !== "boolean") {
+    process.stderr.write("pr-state: gh returned no boolean isDraft; refusing to guess (fail-closed)\n");
+    process.exit(1);
+}
 const reviewMap = {
     APPROVED: "approved",
     CHANGES_REQUESTED: "changes-requested",
@@ -20,6 +24,6 @@ const facts = {
     merged: v.state === "MERGED",
     reviewDecision: reviewMap[v.reviewDecision ?? ""] ?? "none",
     checks: rollupStatus(v.statusCheckRollup ?? []),
-    draft: v.isDraft === true,
+    draft: v.isDraft,
 };
 process.stdout.write(JSON.stringify({ pr: Number(pr), facts, reconstructed: reconstructState(facts) }, null, 2) + "\n");

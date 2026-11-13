@@ -21,9 +21,14 @@ const v = JSON.parse(raw) as {
   headRefName: string;
   state: string;
   reviewDecision: string | null;
-  isDraft?: boolean;
+  isDraft?: unknown;
   statusCheckRollup?: { status?: string; conclusion?: string }[];
 };
+
+if (typeof v.isDraft !== "boolean") {
+  process.stderr.write("pr-state: gh returned no boolean isDraft; refusing to guess (fail-closed)\n");
+  process.exit(1);
+}
 
 const reviewMap: Record<string, PrFacts["reviewDecision"]> = {
   APPROVED: "approved",
@@ -34,7 +39,7 @@ const facts: PrFacts = {
   merged: v.state === "MERGED",
   reviewDecision: reviewMap[v.reviewDecision ?? ""] ?? "none",
   checks: rollupStatus(v.statusCheckRollup ?? []),
-  draft: v.isDraft === true,
+  draft: v.isDraft,
 };
 
 process.stdout.write(
