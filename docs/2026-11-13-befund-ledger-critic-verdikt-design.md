@@ -5,7 +5,7 @@
 > Anlass: Vergleich mit dem Elephant-Goldfish Model (google/elephant-goldfish-model,
 > `skills/egm-review-loop`, `skills/egm-resolve`), dessen Konvergenzregeln Befunde über Runden
 > verfolgen statt sie zu zählen und einen ausgefallenen Reviewer nie als „keine Befunde" werten.
-> Status: **Entwurf v2 (nach einer frischen Critic-Runde), wartet auf Spec-Abnahme.**
+> Status: **abgenommen** (v2, 2026-11-13); Nachtrag REQ-LEDGER-11 abgenommen 2026-11-14.
 
 ## Ist-Zustand (origin/main, b7e7115)
 
@@ -112,6 +112,10 @@ reopened verhält sich wie open (kann wieder closed / fixed-claimed werden)
 - **REQ-LEDGER-10** — Wenn der Driver `STOP_FOR_HUMAN` oder `ESCALATE` liefert, soll der
   Orchestrator den Ledger als Tabelle in den PR schreiben: offene blocker/major zuoberst,
   `fixed-claimed` ausdrücklich als „behoben (unverifiziert)".
+- **REQ-LEDGER-11** — Wenn zu Rundenbeginn kein Befund mit Schweregrad blocker/major im Zustand
+  open oder reopened ist, soll das System die Runde weder als Fortschritt noch als Stagnation
+  werten (`nextLoopDecision` prüft dann keine Stagnation). Nachtrag: ohne diese REQ würde die
+  erste bewertete Runde als Stagnation gelten und den einzigen Fresh-Retry verbrennen.
 
 ### Critic-Verdikt im Kern (`src/core/critic.ts`, `src/cli/critic-verdict.ts`, `driver.ts`)
 
@@ -171,6 +175,7 @@ reopened verhält sich wie open (kann wieder closed / fixed-claimed werden)
      derselbe Key sein)
    - (j) Schweregrad = letzter statt höchster gesehener
    - (k) `reconstructState` ignoriert `draft`
+   - (l) erste Runde (nichts offen zu Rundenbeginn) wird als Stagnation gewertet
 3. **Key-Stabilität (Pilot, kein Gate):** im nächsten echten Lauf denselben Implement-Stand von
    zwei frischen Critics prüfen lassen; Anteil gleicher Review-Keys, typisch und Maximum der
    Abweichung dokumentieren. Unter 50 % Übereinstimmung ⇒ Klassenliste nachschärfen (eigene
