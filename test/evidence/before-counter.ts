@@ -1,9 +1,9 @@
 // @ts-nocheck
 // Vorher-Nachweis (kein vitest-Test, Name ohne ".test."): die beiden Tabellenfälle der Spec als
-// errorCounts (= Anzahl blocker/major je Runde) durch das HEUTIGE nextLoopDecision (alter Stand,
-// errorCounts + requireStrictlyDecreasing). Nach der Implementierung ist dieses Skript hinfällig.
+// errorCounts (= Anzahl blocker/major je Runde) durch die gepinnte Fixture loop-before.ts (= src/core/loop.ts aus 1a74327, alter Zähler-Stand
+// mit errorCounts + requireStrictlyDecreasing). Unabhängig vom aktuellen src/ reproduzierbar.
 // Aufruf: npx tsx test/evidence/before-counter.ts
-import { nextLoopDecision } from "../../src/core/loop.js";
+import { nextLoopDecision } from "./loop-before.js";
 
 const params = { maxIter: 5, requireStrictlyDecreasing: true }; // Parameter aus dem alten loop.test.ts
 const decide = (errorCounts: number[]) =>

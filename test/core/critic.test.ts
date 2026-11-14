@@ -182,3 +182,29 @@ test("[REQ-CRITIC-3] (Probe i) derselbe Defekt, von zwei Critics verschieden lok
   const b = parseCriticOutput(out([F({ evidence: "src/a.ts:13", claim: "B" })]));
   expect(mergeCriticRuns([a, b]).findings).toHaveLength(1);
 });
+
+// ---- Nachtrag: Escapes, leere req, Zusatzfeld line ------------------------------------------
+test("[REQ-CRITIC-2] Escapes im claim ('say \\\"x\\\" }') stören das Auffinden nicht: genau ein Befund", () => {
+  const raw = out([F({ claim: 'say "x" }' })]);
+  expect(raw).toContain('\\"x\\" }');
+  const r = parseCriticOutput(raw);
+  expect(r.status).toBe("completed");
+  expect(r.findings).toHaveLength(1);
+});
+
+test("[REQ-CRITIC-2] '{' im Text VOR dem JSON stört nicht: genau ein Befund", () => {
+  const r = parseCriticOutput(`Vorab { unvollständige Notiz\n${out([F({ claim: 'say "x" }' })])}\nEnde`);
+  expect(r.status).toBe("completed");
+  expect(r.findings).toHaveLength(1);
+});
+
+test("[REQ-KEY-2] Befund mit req '' (leer) => not-run", () => {
+  expect(parseCriticOutput(out([F({ req: "" })])).status).toBe("not-run");
+});
+
+test("[REQ-KEY-1] (Probe i) Zusatzfeld line: 10 vs 13 an sonst gleichem Befund => gleicher Key", () => {
+  const a = parseCriticOutput(out([F({ line: 10 })]));
+  const b = parseCriticOutput(out([F({ line: 13 })]));
+  expect(a.status).toBe("completed");
+  expect(a.findings[0].key).toBe(b.findings[0].key);
+});
