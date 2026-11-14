@@ -208,3 +208,22 @@ test("[REQ-KEY-1] (Probe i) Zusatzfeld line: 10 vs 13 an sonst gleichem Befund =
   expect(a.status).toBe("completed");
   expect(a.findings[0].key).toBe(b.findings[0].key);
 });
+
+// ---- Nachtrag 2: ungerade Zahl escapter Quotes (tötet "Escape-Behandlung entfernt") -------------
+// Der erste Escape-Test (zwei \" im claim) ist für diese Mutation äquivalent: ohne Escape-Behandlung
+// schließt und öffnet der String je einmal, die Balance stimmt zufällig. Mit EINEM \" vor "}" kippt sie.
+test("[REQ-CRITIC-2] ungerade Zahl escapter Quotes im claim ('5\\\" Rohr }') => completed, genau ein Befund", () => {
+  const raw = out([F({ claim: '5" Rohr }' })]);
+  expect(raw).toContain('5\\" Rohr }'); // im Roh-JSON: ein escaptes Quote, gefolgt von }
+  const r = parseCriticOutput(`Text ${raw} Ende`);
+  expect(r.status).toBe("completed");
+  expect(r.findings).toHaveLength(1);
+});
+
+test("[REQ-CRITIC-2] escapter Backslash direkt vor dem schließenden Quote ('ende\\\\') => completed, genau ein Befund", () => {
+  const raw = out([F({ claim: "Pfad C:\\dir\\" }), F({ klasse: "other", claim: "zweiter }" })]);
+  expect(raw).toContain('dir\\\\"'); // Roh-JSON: \\ unmittelbar vor dem schließenden "
+  const r = parseCriticOutput(raw);
+  expect(r.status).toBe("completed");
+  expect(r.findings).toHaveLength(2);
+});
