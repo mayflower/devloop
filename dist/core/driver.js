@@ -16,6 +16,10 @@
 //   5. The back-edge feedback is a defect SIGNAL, never a solution (type-enforced).
 //   6. T3's irreversible step stays human-gated (the auto-loop runs only on reversible
 //      pre-stages; merge is the t3-merge stop).
+//   7. (REQ-BIND-5) No path to merge-pending / DONE without a DERIVED "accepted" of a
+//      "completed" critic round: MARK_READY (draft -> ready, which arms auto-merge) only comes
+//      from critiqued + completed + accepted; merge-pending without ready === true goes back to
+//      the critic; a not-run critic is retried once, then ESCALATE (never read as "no findings").
 import { nextLoopDecision } from "./loop.js";
 function handleRedGate(state) {
     if (!state.loop || !state.loopParams) {
@@ -45,6 +49,15 @@ function handleMerge(state) {
                 ? { kind: "DONE" }
                 : { kind: "STOP_FOR_HUMAN", stop: "t3-merge" };
     }
+}
+// A ready PR: a human "changes requested" is a defect signal -> re-implement (the loop feeds the
+// review comments back), and the PR goes back to draft before the next push (REQ-BIND-3).
+// Resumable across sessions: the decision lives on GitHub. Otherwise the tier-gated merge.
+function handleReady(state) {
+    if (state.reviewDecision === "changes-requested") {
+        return { kind: "RE_GEN", feedback: "defect-signal", freshContext: false, markDraft: true };
+    }
+    return handleMerge(state);
 }
 export function nextAction(state) {
     // Invariant 1: without the guardians, the autonomous loop is refused outright.
@@ -87,13 +100,26 @@ export function nextAction(state) {
             return state.gateVerdict === "green"
                 ? { kind: "SPAWN_STATION", station: "critic" }
                 : handleRedGate(state);
-        case "merge-pending":
-            // A human "changes requested" on the impl PR is a defect signal -> re-implement (the loop
-            // feeds the review comments back). Resumable across sessions: the decision lives on GitHub.
-            if (state.reviewDecision === "changes-requested") {
-                return { kind: "RE_GEN", feedback: "defect-signal", freshContext: false };
+        case "critiqued": {
+            const c = state.critic;
+            if (!c)
+                return { kind: "SPAWN_STATION", station: "critic" };
+            if (c.status === "not-run") {
+                // Exactly one restart; a second not-run is an escalation, never "no findings".
+                return c.retried
+                    ? { kind: "ESCALATE", reason: "critic-not-run" }
+                    : { kind: "SPAWN_STATION", station: "critic" };
             }
-            // Invariant 3 & 6: T3 merge is human-gated; T0/T1 auto-merge.
-            return handleMerge(state);
+            if (c.verdict === "rejected")
+                return handleRedGate(state); // back-edge via nextLoopDecision
+            // accepted: mark ready first (arms auto-merge), then behave like merge-pending.
+            return state.ready === true ? handleReady(state) : { kind: "MARK_READY" };
+        }
+        case "merge-pending":
+            // Invariant 7: merge-pending is only legitimate for a ready PR (= accepted critic round).
+            // Anything else goes back to the critic.
+            if (state.ready !== true)
+                return { kind: "SPAWN_STATION", station: "critic" };
+            return handleReady(state);
     }
 }

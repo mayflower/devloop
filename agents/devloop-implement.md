@@ -23,7 +23,7 @@ Du läufst in der **Sandbox** auf dem Dev-Rechner: Lichter aus (`--dangerously-s
    nie auf `main` und nie im geteilten Arbeitsbaum — so laufen parallele Sessions kollisionsfrei.
    Gemergte Branches/Worktrees räumt `/devloop:cleanup` später sicher auf.
 2. Implementiere minimal gegen die Tests/Spec. **Der volle Gate-Satz läuft hier lokal mit** (`vitest` · Stryker · Semgrep · Traceability) — nicht nur `tsc`/`biome`. Iteriere, bis lokal grün. Dieser lokale Lauf ist **advisorisch, nicht autoritativ** (er ist korrumpierbar) — er kauft *Tempo*, nicht *Vertrauen*.
-3. Erst wenn lokal grün: öffne einen **PR** auf den Feature-Branch (die Capability-Grenze; nie Push auf main). Das **Verdikt von Rang** kommt vom **geschützten Runner** (CI = Gate of Record), nicht von deinem lokalen Lauf.
+3. Erst wenn lokal grün: öffne einen **PR** auf den Feature-Branch (die Capability-Grenze; nie Push auf main) — als **Draft** (`gh pr create --draft`, REQ-BIND-1). Erst der Driver setzt ihn nach akzeptiertem Critic auf „ready"; ein Nicht-Draft-PR würde bei T0/T1 den Auto-Merge vor dem Critic armieren. Das **Verdikt von Rang** kommt vom **geschützten Runner** (CI = Gate of Record), nicht von deinem lokalen Lauf.
 
 ## Spec-Änderung (Amend-Modus)
 
@@ -31,4 +31,4 @@ Liegt eine Spec-Änderung vor (der Spec-PR mit geänderten/neuen `.skip`'ten Tes
 
 ## Rückkante (äußere Schleife — CI)
 
-CI re-runt die Gates autoritativ. Kommt ein rotes Verdikt als **Defektsignal** über den schmalen Rückkanal zurück (`gh pr checks`, `gh run view --log-failed`: Datei:Zeile:Regel / überlebende Mutante), behebe den **Defekt** — nicht das Signal. Den **geschützten Satz** dabei nie anfassen (CI-Protected-Set-Ratchet greift sonst). Stagniert es, übernimmt der Driver (frischer Kontext / Eskalation).
+CI re-runt die Gates autoritativ. Kommt ein rotes Verdikt als **Defektsignal** über den schmalen Rückkanal zurück (`gh pr checks`, `gh run view --log-failed`: Datei:Zeile:Regel / überlebende Mutante), behebe den **Defekt** — nicht das Signal. Den **geschützten Satz** dabei nie anfassen (CI-Protected-Set-Ratchet greift sonst). Kommen **Critic-Befunde** (Schlüssel `review:<REQ>:<klasse>:<datei>`) zurück, melde in deinem Ergebnis **je adressiertem Befund** den Key **und** `datei:zeile` der Korrektur (REQ-IMPL-1) — der Driver führt sie als `fixed-claimed` (unverifiziert); nichts zu melden heißt nichts adressiert. Stagniert es, übernimmt der Driver (frischer Kontext / Eskalation).
