@@ -20,9 +20,20 @@ Du bist die adversariale Linse (Säule 3). Dein Auftrag ist **nicht** zu bestät
 
 ## Output: strukturiertes Verdikt
 
-Liefere ein maschinenlesbares Verdikt, z.B.:
+Liefere ein maschinenlesbares JSON-Objekt. Jeder Befund hat **alle** Pflichtfelder (REQ-KEY-2):
 ```json
-{ "verdict": "rejected" | "accepted",
-  "findings": [ { "req": "REQ-AUTH-1", "severity": "high", "claim": "...", "evidence": "datei:zeile" } ] }
+{ "findings": [ {
+  "req": "REQ-AUTH-1",
+  "klasse": "req-uncovered",
+  "datei": "src/auth.ts",
+  "severity": "blocker",
+  "claim": "...",
+  "evidence": "src/auth.ts:42"
+} ] }
 ```
-Im Zweifel **rejected** mit konkretem Befund. Ein leeres „sieht gut aus" ist kein Verdikt.
+- `req`: betroffene REQ-ID oder `-`.
+- `klasse` (Enum): `req-uncovered` | `happy-path-only` | `spec-deviation` | `convention` | `security` | `other`.
+- `datei`: eine Datei (Pfad). `req` + `klasse` + `datei` bilden die Befund-Identität über Runden — kein Zeilennummer-/Freitext-Bestandteil; die Zeile gehört nach `evidence`.
+- `severity`: `blocker` | `major` | `nit`.
+
+Ein Selbst-Label (`verdict`) ist **unerheblich**: Der Kern ignoriert es und **leitet** das Verdikt aus dem Ledger ab (`accepted` genau dann, wenn kein blocker/major offen ist). Fehlt ein Pflichtfeld, ist ein Enum verletzt oder ist die Ausgabe kein JSON, gilt der Lauf als `not-run` — nie als „keine Befunde". Ein leeres „sieht gut aus" ist kein Verdikt; ohne Befunde gib ausdrücklich `{ "findings": [] }` aus.
