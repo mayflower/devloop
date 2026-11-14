@@ -34,7 +34,9 @@ Konstruktionen der Spec (Draft-Folgen, Label-accepted, 3-Zeilen-Verschiebung, R1
 ## Unabhängige Messung 2026-11-14
 
 12/12 Pflichtproben getötet. 38 eigene Mutationen der unabhängigen Messung, 10 überlebten. Nach diesem
-Nachtrag geschlossen: o37, o28, o29, o18, o15, i5, j2. Verbleibend, als äquivalent bewertet:
+Nachtrag geschlossen: o37, o28, o29, o15, i5, j2.
+**o18** (`if (c === "\\") i++;` -> `if (false) i++;` in `objectEnd`) wurde zunächst NICHT getötet: der erste Escape-Test hat zwei escapte Quotes im `claim`, dann stimmt die Klammerbilanz ohne Escape-Behandlung zufällig (336/336 grün, Mutation äquivalent für diese Eingabe). Erst mit Nachtrag 2 geschlossen: `test/core/critic.test.ts` :: "[REQ-CRITIC-2] ungerade Zahl escapter Quotes im claim ('5\" Rohr }') ..." (gemessen: mit Mutation 1 rot, ohne Mutation 31/31 grün). Der Test "escapter Backslash direkt vor dem schließenden Quote" tötet o18 nicht, sondern eine naive Variante `s[i-1] !== "\\"` (gemessen rot).
+ Verbleibend, als äquivalent bewertet:
 - **o06**: `higher()` am Eintrag und ein zweites Vorkommen desselben Keys sieht bereits `reopened`; das Ergebnis ist gleich.
 - **o10**: Die Severity steigt nur bei Meldung in der Runde; der Eintrag wird dann nie `closed`/`fixed-claimed`, die Abweichung ist nicht beobachtbar.
 - **o24**: typgleich, kein beobachtbarer Unterschied.
