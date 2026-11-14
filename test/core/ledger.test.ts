@@ -52,6 +52,12 @@ test("[REQ-LEDGER-1] je Key genau ein Eintrag, auch bei doppelt gemeldetem Key; 
   expect(r.ledger[ck("a")].severity).toBe("blocker");
 });
 
+test("[REQ-LEDGER-1] (Probe j) derselbe Critic-Key zweimal in einer Runde, blocker dann nit => severity blocker", () => {
+  const r = applyRound({}, round([crit("a", "blocker"), crit("a", "nit")]));
+  expect(Object.keys(r.ledger)).toEqual([ck("a")]);
+  expect(r.ledger[ck("a")].severity).toBe("blocker");
+});
+
 test("[REQ-LEDGER-1] doppelt gemeldeter Key erhöht reopenCount nur einmal pro Runde", () => {
   const prev = L(entry(gk("a"), "gate", "blocker", "closed"));
   const r = applyRound(prev, round([gate("a"), gate("a")]));
