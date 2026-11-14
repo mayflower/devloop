@@ -5,7 +5,7 @@
 > Anlass: Vergleich mit dem Elephant-Goldfish Model (google/elephant-goldfish-model,
 > `skills/egm-review-loop`, `skills/egm-resolve`), dessen Konvergenzregeln Befunde über Runden
 > verfolgen statt sie zu zählen und einen ausgefallenen Reviewer nie als „keine Befunde" werten.
-> Status: **abgenommen** (v2, 2026-11-13); Nachtrag REQ-LEDGER-11 abgenommen 2026-11-14.
+> Status: **abgenommen** (v2, 2026-11-13); Nachtrag REQ-LEDGER-11 abgenommen 2026-11-14; Nachtrag REQ-GATE-1..3 abgenommen 2026-11-14.
 
 ## Ist-Zustand (origin/main, b7e7115)
 
@@ -117,6 +117,26 @@ reopened verhält sich wie open (kann wieder closed / fixed-claimed werden)
   werten (`nextLoopDecision` prüft dann keine Stagnation). Nachtrag: ohne diese REQ würde die
   erste bewertete Runde als Stagnation gelten und den einzigen Fresh-Retry verbrennen.
 
+### Gate-Runden im Kern (`src/core/gate-round.ts`, `src/cli/gate-round.ts`) — Nachtrag 2026-11-14
+
+Anlass: Ohne diesen Nachtrag hat eine Runde mit rotem Gate keinen Weg in den Ledger; der
+Orchestrator müsste `lastRound` selbst bestimmen, und der Fehlfall „falsche Stagnation" am Gate
+bliebe im echten Lauf bestehen.
+
+- **REQ-GATE-1** — Wenn der Orchestrator eine Runde mit rotem Gate meldet, soll das System die
+  strukturierten Gate-Befunde (`GateRaw`: test / mutant / semgrep / trace) per REQ-KEY-1 in Keys
+  übersetzen, mit `applyRound` in den Ledger schreiben und `judged/progress/oscillation`
+  zurückgeben. Die Übersetzung aus den CI-Logs in `GateRaw` bleibt beim Orchestrator (siehe
+  Bekannte Grenzen).
+- **REQ-GATE-2** — Die Eingabe soll die in dieser Runde tatsächlich gelaufenen Gate-Arten
+  (`ran`) enthalten. Wenn eine Gate-Art nicht gelaufen ist, soll das System ihre Befunde im
+  Ledger unverändert lassen (REQ-LEDGER-2 gilt nur für gelaufene Arten). Begründung: Viele
+  Pipelines überspringen Mutation/Semgrep, wenn Tests rot sind; „nicht gelaufen" wäre sonst
+  „geschlossen" ⇒ falscher Fortschritt, beim nächsten Lauf `reopened` ⇒ falsche Oszillation.
+- **REQ-GATE-3** — Wenn die Eingabe nicht valide ist (unbekannte Art, Pflichtfeld fehlt, `ran`
+  fehlt), soll das System nichts fortschreiben und mit Exit ≠ 0 abbrechen — nie still eine leere
+  Runde werten.
+
 ### Critic-Verdikt im Kern (`src/core/critic.ts`, `src/cli/critic-verdict.ts`, `driver.ts`)
 
 - **REQ-CRITIC-1** — Wenn ein Critic-Lauf endet, soll der Orchestrator dessen **rohe** Ausgabe an
@@ -176,6 +196,8 @@ reopened verhält sich wie open (kann wieder closed / fixed-claimed werden)
    - (j) Schweregrad = letzter statt höchster gesehener
    - (k) `reconstructState` ignoriert `draft`
    - (l) erste Runde (nichts offen zu Rundenbeginn) wird als Stagnation gewertet
+   - (m) Gate-Befund einer nicht gelaufenen Art wird geschlossen (REQ-GATE-2)
+   - (n) ungültige Gate-Eingabe wird als leere Runde gewertet statt abgelehnt (REQ-GATE-3)
 3. **Key-Stabilität (Pilot, kein Gate):** im nächsten echten Lauf denselben Implement-Stand von
    zwei frischen Critics prüfen lassen; Anteil gleicher Review-Keys, typisch und Maximum der
    Abweichung dokumentieren. Unter 50 % Übereinstimmung ⇒ Klassenliste nachschärfen (eigene
@@ -186,6 +208,10 @@ reopened verhält sich wie open (kann wieder closed / fixed-claimed werden)
 
 ## Bekannte Grenzen
 
+- **Gate-Übersetzung durch den Orchestrator.** REQ-KEY-1 ist für Gate-Ausgaben nur teilweise
+  erfüllt: Der Kern bildet Keys deterministisch, liest aber keine rohen vitest-/Stryker-/Semgrep-
+  Reports. Der Orchestrator könnte beim Übersetzen Befunde weglassen oder `ran` falsch angeben —
+  gleiche Vertrauensstufe wie beim Critic-Output. Report-Parser sind ein eigener Schritt.
 - **Orchestrator-Vertrauen bleibt.** REQ-CRITIC-1 hebt die Hürde (der Kern validiert selbst,
   `status` ist kein Eingabefeld), aber ein Orchestrator könnte gültiges JSON ohne Befunde
   fabrizieren, und er setzt `gh pr ready`. Echte Abhilfe wäre der Critic als CI-Job mit
