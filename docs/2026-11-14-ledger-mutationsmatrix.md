@@ -41,6 +41,22 @@ Nachtrag geschlossen: o37, o28, o29, o15, i5, j2.
 - **o10**: Die Severity steigt nur bei Meldung in der Runde; der Eintrag wird dann nie `closed`/`fixed-claimed`, die Abweichung ist nicht beobachtbar.
 - **o24**: typgleich, kein beobachtbarer Unterschied.
 
+## Nachtrag REQ-GATE (2026-11-14)
+
+Gemessen im Wegwerf-Worktree auf 53171fc, je Mutation `npm run build` + Gate-Round-/Ledger-Tests,
+Kontrolle unmutiert 28/28 grün.
+
+| Probe | Mutation | rot |
+|---|---|---|
+| (m) | `applyGateRound` hält nicht gelaufene Arten nicht zurück (alle aktiv) | 6 |
+| (m) Zusatz | `judged` ohne gehaltene offene Einträge | 1 |
+| (n) | `raw.kind` nicht in `ran` wird akzeptiert | 3 |
+| (n) | ungültige Eingabe ⇒ leere Runde statt `undefined` | 27 |
+| (n) CLI | Exit 2 ⇒ Exit 0 | 19 |
+| (n) CLI | Ledger-Prüfung entfernt | 3 |
+
+Alle getötet.
+
 ## Weitere Abdeckung (keine Pflichtprobe)
 
 - REQ-LEDGER-10: `renderLedgerTable` (Reihenfolge, "behoben (unverifiziert)") rein testbar; das Schreiben
