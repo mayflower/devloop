@@ -28,7 +28,11 @@ Halte einen `DriverState` (tier, guardians, phase, twinEnabled, humanApprovals, 
 ```
 echo '{"rawOutputs":["<roh>",...],"ledger":<Ledger>,"addressed":["<key>",...]}' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/critic-verdict.js
 ```
-`addressed` = die Keys, die `implement` zuletzt als adressiert gemeldet hat. Ergebnis `status: "not-run"` → `critic: {status:"not-run", retried}`. `completed` → `critic: {status, verdict, retried:false}` (das **abgeleitete** `verdict`), `round.ledger` ist dein neuer Ledger, `round` ohne `ledger` (`judged/progress/oscillation`) dein neues `loop.lastRound`. Bei rotem Gate genauso: Gate-Befunde (Key je Spec-Tabelle) per `applyRound` fortschreiben. Der Ledger lebt nur in dieser Session (siehe Resume).
+`addressed` = die Keys, die `implement` zuletzt als adressiert gemeldet hat. Ergebnis `status: "not-run"` → `critic: {status:"not-run", retried}`. `completed` → `critic: {status, verdict, retried:false}` (das **abgeleitete** `verdict`), `round.ledger` ist dein neuer Ledger, `round` ohne `ledger` (`judged/progress/oscillation`) dein neues `loop.lastRound`. Bei rotem Gate genauso, mit den **strukturierten** Gate-Befunden:
+```
+echo '{"raws":[<GateRaw>,...],"ran":["test",...],"ledger":<Ledger>,"addressed":["<key>",...]}' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/gate-round.js
+```
+`GateRaw` = `{kind:"test",file,testName}` · `{kind:"mutant",file,fn,mutator}` · `{kind:"semgrep",rule,file,fn}` · `{kind:"trace",req}`. `ran` = **nur** die Gate-Arten, deren CI-Job in dieser Runde tatsächlich gelaufen ist (übersprungene Jobs **nicht** eintragen — sonst gälten ihre Befunde als geschlossen). Exit 2 = Eingabe falsch: nichts fortschreiben, Eingabe korrigieren statt raten. Sonst `round.ledger` = neuer Ledger, `round` ohne `ledger` = neues `loop.lastRound`. Der Ledger lebt nur in dieser Session (siehe Resume).
 
 Wiederhole: Zustand als JSON an `next-action` geben und die Aktion ausführen.
 ```
