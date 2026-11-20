@@ -124,6 +124,9 @@ Was passiert (Spec-PR-zuerst; der Driver gehorcht dem getesteten Kern, trifft ni
      vorher/nachher. Ergebnis leitet `smoke-verdict` ab (`failed` → Rückkante, `not-run` → ein
      Neustart, dann Eskalation). Bericht + **Abnahme-Anleitung** kommen als PR-Kommentar; der Stack
      bleibt für deine Abnahme laufen. Ersetzt sie nicht: Ob die Intention erreicht ist, prüft ein Mensch.
+     **Grenzen** (nicht maschinell prüfbar, nur per Prompt und deinem Blick auf den Bericht): dass
+     `effect` wirklich mehr als ein HTTP-Status ist, dass `not-applicable` stimmt, und dass die
+     Station den Arbeitsbaum nicht verändert hat.
 10. **Merge je Tier:** T0/T1 Auto-Merge bei grün · T2 required Reviewer · **▣ STOPP: T3-Merge**.
 
 > **Zwei PRs, zwei Mensch-Tore:** der **Spec-PR** (Schritt 5, Spec-Review §5.1) und der

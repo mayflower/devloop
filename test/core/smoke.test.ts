@@ -78,3 +78,29 @@ test("[REQ-SMOKE-3] Müll, leerer Text, kein cases-Feld -> not-run", () => {
   for (const raw of ["", "kein json", "{}", JSON.stringify({ consumers: [K], setup: { ok: true } })])
     expect(parseSmokeReport(raw).status).toBe("not-run");
 });
+
+// --- Nachschärfung nach Critic-Runde 1 -------------------------------------------------------
+test("[REQ-SMOKE-3] zwei Berichte im Text (z. B. zitiertes Schema-Beispiel + echter roter) -> not-run, nie passed", () => {
+  const green = R();
+  const red = R({ cases: [C({ pass: false })] });
+  expect(parseSmokeReport(green + "\n" + red).status).toBe("not-run");
+  expect(parseSmokeReport(red + "\n" + green).status).toBe("not-run");
+});
+
+test("[REQ-SMOKE-3] ein ungültiger Fall neben gültigen wird nicht still verworfen -> not-run", () => {
+  expect(parseSmokeReport(R({ cases: [C(), C({ id: "c2", pass: false, effect: "" })] })).status).toBe("not-run");
+});
+
+test("[REQ-SMOKE-3] ein ungültiger Konsument neben gültigen -> not-run", () => {
+  expect(parseSmokeReport(R({ consumers: [K, { changed: "x", caller: "", evidence: "e" }] })).status).toBe("not-run");
+});
+
+test("[REQ-SMOKE-3] expected fehlt oder leer -> not-run", () => {
+  expect(parseSmokeReport(R({ cases: [C({ expected: undefined })] })).status).toBe("not-run");
+  expect(parseSmokeReport(R({ cases: [C({ expected: " " })] })).status).toBe("not-run");
+});
+
+test("[REQ-SMOKE-3] req muss String oder null sein", () => {
+  expect(parseSmokeReport(R({ cases: [C({ req: 7 })] })).status).toBe("not-run");
+  expect(parseSmokeReport(R({ cases: [C({ req: null })] })).status).toBe("passed");
+});

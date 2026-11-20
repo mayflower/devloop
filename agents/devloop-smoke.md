@@ -31,10 +31,12 @@ Du belegst, dass die Änderung **auf dem Weg wirkt, auf dem sie benutzt wird**. 
 
 - **Kein Repo-Inhalt wird geändert**: kein Produktcode, keine Tests, keine Spec. Hilfsskripte nur unter `$TMPDIR`.
 - Ein roter Fall ist ein Befund, kein Anlass, etwas „hinzubiegen“. Melde ihn mit `pass: false` und dem Beobachteten.
-- Scheitert der Aufbau, ist das `setup.ok: false` — **nicht** ein roter Fall. Die Kette unterscheidet „Code falsch“ (Rückkante) von „Smoke lief nicht“ (Neustart, dann Eskalation).
+- Scheitert der Aufbau, ist das `setup.ok: false` — **nicht** ein roter Fall. Dasselbe gilt, wenn die Infrastruktur **während** der Fälle wegbricht (Container stirbt, Port weg): dann `setup.ok: false` mit dem Grund, nicht `pass: false`. Die Kette unterscheidet „Code falsch“ (Rückkante) von „Smoke lief nicht“ (Neustart, dann Eskalation).
 - Nie Werte ausgeben, die Geheimnisse sind (Tokens, Client-Secrets) — auch nicht im Bericht.
 
 ## Output: Bericht (letzte Nachricht, ein JSON-Objekt)
+
+Genau **ein** Objekt mit `cases` in der ganzen Nachricht — das Beispiel unten nicht mit ausgeben. Zwei solche Objekte gelten als mehrdeutig (`not-run`).
 
 ```json
 {

@@ -35,8 +35,11 @@ function objectEnd(s, start) {
     }
     return -1;
 }
-// First top-level JSON object in the text that has a `cases` field.
+// THE top-level JSON object in the text that has a `cases` field. More than one such object (a
+// quoted schema example, an earlier run printed alongside) is ambiguous -> undefined (not-run):
+// picking the first would let a green example mask a red real report.
 function findReport(raw) {
+    const found = [];
     let i = raw.indexOf("{");
     while (i !== -1) {
         const end = objectEnd(raw, i);
@@ -45,7 +48,7 @@ function findReport(raw) {
                 const v = JSON.parse(raw.slice(i, end));
                 if (v && typeof v === "object" && !Array.isArray(v)) {
                     if ("cases" in v)
-                        return v;
+                        found.push(v);
                     i = raw.indexOf("{", end);
                     continue;
                 }
@@ -56,7 +59,29 @@ function findReport(raw) {
         }
         i = raw.indexOf("{", i + 1);
     }
-    return undefined;
+    return found.length === 1 ? found[0] : undefined;
+}
+const TIERS = ["T0", "T1", "T2", "T3"];
+// `.devloop/config.json` -> smoke.tiers. Absent config / absent `smoke` / absent `tiers` -> [] (off).
+// Present but malformed -> undefined: the caller must fail closed (refuse), never read it as "off".
+export function readSmokeTiers(config) {
+    if (config === undefined || config === null)
+        return [];
+    if (typeof config !== "object" || Array.isArray(config))
+        return undefined;
+    const smoke = config.smoke;
+    if (smoke === undefined)
+        return [];
+    if (!smoke || typeof smoke !== "object" || Array.isArray(smoke))
+        return undefined;
+    const tiers = smoke.tiers;
+    if (tiers === undefined)
+        return [];
+    if (!Array.isArray(tiers))
+        return undefined;
+    if (!tiers.every((t) => typeof t === "string" && TIERS.includes(t)))
+        return undefined;
+    return [...new Set(tiers)];
 }
 function toConsumer(x) {
     if (!x || typeof x !== "object")

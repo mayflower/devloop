@@ -46,6 +46,9 @@ function smokeGate(state) {
             return s.retried
                 ? { kind: "ESCALATE", reason: "smoke-not-run" }
                 : { kind: "SPAWN_STATION", station: "smoke" };
+        default:
+            // Anything not produced by smoke-verdict (typo, hand-written label) is fail-closed.
+            return { kind: "ESCALATE", reason: "smoke-invalid-state" };
     }
 }
 function handleRedGate(state) {
@@ -139,8 +142,9 @@ export function nextAction(state) {
             }
             if (c.verdict === "rejected")
                 return handleRedGate(state); // back-edge via nextLoopDecision
-            // accepted: mark ready first (arms auto-merge), then behave like merge-pending. A PR that is
-            // already ready passed every pre-ready gate (incl. smoke) — MARK_READY is only issued below.
+            // accepted: mark ready first (arms auto-merge), then behave like merge-pending. `ready` must
+            // mirror GitHub: the executor resets it to false on RE_GEN with markDraft, so new code after a
+            // human back-edge passes the smoke gate again before MARK_READY.
             if (state.ready === true)
                 return handleReady(state);
             return smokeGate(state) ?? { kind: "MARK_READY" };

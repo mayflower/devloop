@@ -227,3 +227,11 @@ test("[REQ-SMOKE-5] specify asks for a Smoke section with the verified caller of
   expect(md).toMatch(/## Smoke/);
   expect(md).toMatch(/wer den geänderten Pfad aufruft/i);
 });
+
+test("[REQ-SMOKE-6] loop resets ready on markDraft and reads smokeTiers fail-closed; resume reads smokeTiers too", () => {
+  const loop = read("skills/loop/SKILL.md");
+  expect(loop).toMatch(/\*\*`ready: false`\*\*/);
+  expect(loop).toMatch(/smoke-tiers\.js/);
+  expect(loop).toMatch(/server-berechnete Tier aus dem Diff/);
+  expect(read("skills/resume/SKILL.md")).toMatch(/smoke-tiers\.js/);
+});

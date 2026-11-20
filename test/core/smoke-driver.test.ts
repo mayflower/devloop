@@ -106,3 +106,11 @@ test("[REQ-SMOKE-1] smoke spawnt nie vor einem akzeptierten Critic-Verdikt", () 
 test("[REQ-SMOKE-1] ein bereits ready PR (z. B. aus resume) wird nicht erneut gesmoket", () => {
   expect(nextAction(st({ smokeTiers: ["T3"], ready: true }))).toEqual({ kind: "STOP_FOR_HUMAN", stop: "t3-merge" });
 });
+
+test("[REQ-SMOKE-1] unbekannter smoke-Status (Tippfehler, Handlabel) ist fail-closed -> ESCALATE", () => {
+  for (const status of ["PASSED", "ok", undefined])
+    expect(nextAction(st({ smokeTiers: ["T3"], smoke: { status } as unknown as DriverState["smoke"] }))).toEqual({
+      kind: "ESCALATE",
+      reason: "smoke-invalid-state",
+    });
+});

@@ -61,8 +61,11 @@ function objectEnd(s: string, start: number): number {
   return -1;
 }
 
-// First top-level JSON object in the text that has a `cases` field.
+// THE top-level JSON object in the text that has a `cases` field. More than one such object (a
+// quoted schema example, an earlier run printed alongside) is ambiguous -> undefined (not-run):
+// picking the first would let a green example mask a red real report.
 function findReport(raw: string): Record<string, unknown> | undefined {
+  const found: Record<string, unknown>[] = [];
   let i = raw.indexOf("{");
   while (i !== -1) {
     const end = objectEnd(raw, i);
@@ -70,7 +73,7 @@ function findReport(raw: string): Record<string, unknown> | undefined {
       try {
         const v: unknown = JSON.parse(raw.slice(i, end));
         if (v && typeof v === "object" && !Array.isArray(v)) {
-          if ("cases" in v) return v as Record<string, unknown>;
+          if ("cases" in v) found.push(v as Record<string, unknown>);
           i = raw.indexOf("{", end);
           continue;
         }
@@ -80,7 +83,25 @@ function findReport(raw: string): Record<string, unknown> | undefined {
     }
     i = raw.indexOf("{", i + 1);
   }
-  return undefined;
+  return found.length === 1 ? found[0] : undefined;
+}
+
+const TIERS = ["T0", "T1", "T2", "T3"] as const;
+export type SmokeTier = (typeof TIERS)[number];
+
+// `.devloop/config.json` -> smoke.tiers. Absent config / absent `smoke` / absent `tiers` -> [] (off).
+// Present but malformed -> undefined: the caller must fail closed (refuse), never read it as "off".
+export function readSmokeTiers(config: unknown): SmokeTier[] | undefined {
+  if (config === undefined || config === null) return [];
+  if (typeof config !== "object" || Array.isArray(config)) return undefined;
+  const smoke = (config as Record<string, unknown>).smoke;
+  if (smoke === undefined) return [];
+  if (!smoke || typeof smoke !== "object" || Array.isArray(smoke)) return undefined;
+  const tiers = (smoke as Record<string, unknown>).tiers;
+  if (tiers === undefined) return [];
+  if (!Array.isArray(tiers)) return undefined;
+  if (!tiers.every((t) => typeof t === "string" && (TIERS as readonly string[]).includes(t))) return undefined;
+  return [...new Set(tiers as SmokeTier[])];
 }
 
 function toConsumer(x: unknown): SmokeConsumer | undefined {
