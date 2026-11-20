@@ -117,6 +117,16 @@ Was passiert (Spec-PR-zuerst; der Driver gehorcht dem getesteten Kern, trifft ni
    `devloop-precondition-check`, `verify-unskip`, Tier aus dem Diff. Rot → Defektsignal über
    `gh`-Rückkanal → neue `implement`-Runde (Rückkante, Max-Iter + Eskalation).
 9. **critic** (eigener Subagent, adversarial) → strukturiertes Verdikt.
+   - *(optional, nur für Tiers in `.devloop` `smoke.tiers`)* **smoke** (eigener Subagent, ändert
+     nichts am Repo) nach einem akzeptierten Verdikt, **vor** `MARK_READY`: ermittelt, **wer** den
+     geänderten Pfad aufruft (mit `datei:zeile`), wählt danach Browser, API (echte Tokens) oder CLI,
+     baut den lokalen Stack nach `smoke.setup` auf dem PR-Stand auf und misst je Fall die Wirkung
+     vorher/nachher. Ergebnis leitet `smoke-verdict` ab (`failed` → Rückkante, `not-run` → ein
+     Neustart, dann Eskalation). Bericht + **Abnahme-Anleitung** kommen als PR-Kommentar; der Stack
+     bleibt für deine Abnahme laufen. Ersetzt sie nicht: Ob die Intention erreicht ist, prüft ein Mensch.
+     **Grenzen** (nicht maschinell prüfbar, nur per Prompt und deinem Blick auf den Bericht): dass
+     `effect` wirklich mehr als ein HTTP-Status ist, dass `not-applicable` stimmt, und dass die
+     Station den Arbeitsbaum nicht verändert hat.
 10. **Merge je Tier:** T0/T1 Auto-Merge bei grün · T2 required Reviewer · **▣ STOPP: T3-Merge**.
 
 > **Zwei PRs, zwei Mensch-Tore:** der **Spec-PR** (Schritt 5, Spec-Review §5.1) und der
@@ -185,7 +195,7 @@ Stand gebunden.
 ## 4. Einzelne Stationen ohne Orchestrierung
 
 Jede Station gibt es auch als Einzel-Skill (ohne die harten Stopps), z.B. zum Üben:
-`/devloop:specify`, `/devloop:spec-to-tests`, `/devloop:spec-to-twin` *(optional)*, `/devloop:implement`, `/devloop:critic`.
+`/devloop:specify`, `/devloop:spec-to-tests`, `/devloop:spec-to-twin` *(optional)*, `/devloop:implement`, `/devloop:critic`, `/devloop:smoke` *(optional)*.
 Für den echten, abgesicherten Lauf nimm `/devloop:loop`.
 
 ---

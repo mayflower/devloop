@@ -19,6 +19,7 @@ Du erzeugst die **`spec.md`** — die Wurzel des Vertrauens (§5.1). Alles Spät
    ```
    (Liegt die Map an einem ungewöhnlichen Ort, alternativ `{"touched":[...],"tierMap":<inhalt>}` durchreichen.) Schreibe das Ergebnis als `Tier:`-Feld in die `spec.md`. **Achtung:** dieses Tier ist **vorläufig/advisorisch** — es steuert nur Critic-Tiefe und Stopp-Strenge in der inneren Schleife. **Autoritativ** wird das Tier **aus dem tatsächlichen Diff auf CI** berechnet (§9/§10, derselbe `derive-tier` server-seitig), nie aus deiner Deklaration. Du kannst das Tier also nicht herunterspielen.
 3. Schreibe `spec.md` (User Story, Tier, Liste der `REQ-`-Kriterien mit EARS-Typ-Tag).
+4. Schreibe einen Abschnitt **`## Smoke`**: die Abnahme-Fälle aus **Nutzersicht** (wer tut was über welchen Weg, was muss danach sichtbar/gespeichert sein), inkl. der Gegenfälle, die geschlossen bleiben müssen. Getrennt davon **„Nach dem Deploy“**: was nur in Produktion nachweisbar ist (echte Konten, echte Konfiguration). Benenne, **wer den geänderten Pfad aufruft** (Oberfläche, MCP, anderer Dienst) — nachgesehen, mit `datei:zeile`, nicht angenommen. Die `smoke`-Station und der Mensch an der Abnahme arbeiten damit; der Abschnitt ist kein `REQ-`-Kriterium und erzeugt keine Tests.
 
 ## Spec-Änderung (Amend-Modus)
 
