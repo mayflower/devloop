@@ -20,7 +20,34 @@
 //      "completed" critic round: MARK_READY (draft -> ready, which arms auto-merge) only comes
 //      from critiqued + completed + accepted; merge-pending without ready === true goes back to
 //      the critic; a not-run critic is retried once, then ESCALATE (never read as "no findings").
+//   8. (REQ-SMOKE-1..4) Where the repo opts a tier into the smoke station (.devloop smoke.tiers),
+//      MARK_READY additionally requires a DERIVED smoke result "passed" or "not-applicable" —
+//      produced by the smoke-verdict CLI, never by the station's own label. "failed" is a defect
+//      signal (back-edge), "not-run" is retried once, then ESCALATE. Tiers not opted in: unchanged.
 import { nextLoopDecision } from "./loop.js";
+function smokeRequired(state) {
+    return (state.smokeTiers ?? []).includes(state.tier);
+}
+// Invariant 8: the smoke gate in front of MARK_READY (only for opted-in tiers).
+function smokeGate(state) {
+    if (!smokeRequired(state))
+        return undefined;
+    const s = state.smoke;
+    if (!s)
+        return { kind: "SPAWN_STATION", station: "smoke" };
+    switch (s.status) {
+        case "passed":
+        case "not-applicable":
+            return undefined;
+        case "failed":
+            return handleRedGate(state); // observed wrong effect = defect signal -> back-edge
+        case "not-run":
+            // Setup broke / report unparseable: one restart, then escalate — never read as "passed".
+            return s.retried
+                ? { kind: "ESCALATE", reason: "smoke-not-run" }
+                : { kind: "SPAWN_STATION", station: "smoke" };
+    }
+}
 function handleRedGate(state) {
     if (!state.loop || !state.loopParams) {
         return { kind: "ESCALATE", reason: "loop-params-required" };
@@ -112,8 +139,11 @@ export function nextAction(state) {
             }
             if (c.verdict === "rejected")
                 return handleRedGate(state); // back-edge via nextLoopDecision
-            // accepted: mark ready first (arms auto-merge), then behave like merge-pending.
-            return state.ready === true ? handleReady(state) : { kind: "MARK_READY" };
+            // accepted: mark ready first (arms auto-merge), then behave like merge-pending. A PR that is
+            // already ready passed every pre-ready gate (incl. smoke) — MARK_READY is only issued below.
+            if (state.ready === true)
+                return handleReady(state);
+            return smokeGate(state) ?? { kind: "MARK_READY" };
         }
         case "merge-pending":
             // Invariant 7: merge-pending is only legitimate for a ready PR (= accepted critic round).

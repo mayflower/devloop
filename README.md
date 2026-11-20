@@ -21,6 +21,7 @@ fail-closed CI-Required-Check und GitHub-Branch-Protection.
 - `/devloop:spec-to-twin` — *(optional, `.devloop` `twin.enabled`)* unabhängiges Verhaltens-Orakel (triviales Referenzmodell + REQ-getaggte Invarianten + fast-check model-based) aus Domänen-Wahrheiten — Korrektheit statt nur Spec-Treue
 - `/devloop:implement` — konsumiert Spec+Tests, öffnet PR (schreibt Spec/Tests nicht selbst)
 - `/devloop:critic` — adversarial, frischer Kontext, strukturiertes Verdikt
+- `/devloop:smoke` — *(optional, `.devloop` `smoke.tiers`)* Smoke gegen einen lokalen Stack auf dem PR-Stand: erst die Konsumenten des geänderten Pfads belegen, dann Browser/API/CLI, Wirkung vorher/nachher messen; liefert die Abnahme-Anleitung für den Menschen
 - `/devloop:loop` — der Driver (orchestriert die Stationen als isolierte Subagenten)
 - `/devloop:init` — verdrahtet den CI-Bindungs-Anker in ein Ziel-Repo
 - `/devloop:cleanup` — räumt lokale, im Remote gemergte Branches + ihre Worktrees sicher auf

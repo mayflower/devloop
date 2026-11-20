@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(resolve(root, rel), "utf8");
 const has = (rel: string) => existsSync(resolve(root, rel));
 
-const STATIONS = ["specify", "spec-to-tests", "implement", "critic"] as const;
+const STATIONS = ["specify", "spec-to-tests", "implement", "critic", "smoke"] as const;
 
 function frontmatter(md: string): string {
   const m = md.match(/^---\n([\s\S]*?)\n---/);
@@ -207,4 +207,23 @@ test("composite action manifests carry no ${{ }} expression in any description f
       expect(desc, `${rel} has an expression in a description field`).not.toContain("${" + "{");
     }
   }
+});
+
+test("[REQ-SMOKE-5] the smoke subagent changes no repo content (no Write/Edit)", () => {
+  const fm = frontmatter(read("agents/devloop-smoke.md"));
+  expect(fm).not.toMatch(/\bWrite\b/);
+  expect(fm).not.toMatch(/\bEdit\b/);
+});
+
+test("[REQ-SMOKE-5] the loop skill derives smoke via smoke-verdict and clears critic+smoke on RE_GEN", () => {
+  const md = read("skills/loop/SKILL.md");
+  expect(md).toMatch(/smoke-verdict/);
+  expect(md).toMatch(/smokeTiers/);
+  expect(md).toMatch(/`critic` und `smoke` im State löschen/);
+});
+
+test("[REQ-SMOKE-5] specify asks for a Smoke section with the verified caller of the changed path", () => {
+  const md = read("agents/devloop-specify.md");
+  expect(md).toMatch(/## Smoke/);
+  expect(md).toMatch(/wer den geänderten Pfad aufruft/i);
 });

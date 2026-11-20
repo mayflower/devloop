@@ -20,12 +20,16 @@
 //      "completed" critic round: MARK_READY (draft -> ready, which arms auto-merge) only comes
 //      from critiqued + completed + accepted; merge-pending without ready === true goes back to
 //      the critic; a not-run critic is retried once, then ESCALATE (never read as "no findings").
+//   8. (REQ-SMOKE-1..4) Where the repo opts a tier into the smoke station (.devloop smoke.tiers),
+//      MARK_READY additionally requires a DERIVED smoke result "passed" or "not-applicable" —
+//      produced by the smoke-verdict CLI, never by the station's own label. "failed" is a defect
+//      signal (back-edge), "not-run" is retried once, then ESCALATE. Tiers not opted in: unchanged.
 
 import type { Tier } from "./tier.js";
 import type { Stop } from "./types.js";
 import { nextLoopDecision, type LoopState, type LoopParams } from "./loop.js";
 
-export type Station = "specify" | "spec-to-tests" | "spec-to-twin" | "implement" | "critic";
+export type Station = "specify" | "spec-to-tests" | "spec-to-twin" | "implement" | "critic" | "smoke";
 
 export type Phase =
   | "init"
@@ -68,8 +72,40 @@ export interface DriverState {
     | { status: "completed"; verdict: "accepted" | "rejected"; retried: boolean }
     | { status: "not-run"; retried: boolean };
   ready?: boolean; // the impl PR is marked ready for review (not draft)
+  // Optional smoke station (REQ-SMOKE): tiers the target repo opts in via .devloop/config.json
+  // `smoke.tiers` (default: none -> chain unchanged). Runs after an accepted critic round, before
+  // MARK_READY, against a LOCAL stack — it observes the effect on the real consumer path.
+  smokeTiers?: Tier[];
+  // Result of the last smoke run, DERIVED by the smoke-verdict CLI from the station's raw report.
+  // The executor clears it together with `critic` on every RE_GEN (new code -> new evidence).
+  smoke?:
+    | { status: "passed" | "not-applicable" | "failed" }
+    | { status: "not-run"; retried: boolean };
   loop?: LoopState;
   loopParams?: LoopParams;
+}
+
+function smokeRequired(state: DriverState): boolean {
+  return (state.smokeTiers ?? []).includes(state.tier);
+}
+
+// Invariant 8: the smoke gate in front of MARK_READY (only for opted-in tiers).
+function smokeGate(state: DriverState): Action | undefined {
+  if (!smokeRequired(state)) return undefined;
+  const s = state.smoke;
+  if (!s) return { kind: "SPAWN_STATION", station: "smoke" };
+  switch (s.status) {
+    case "passed":
+    case "not-applicable":
+      return undefined;
+    case "failed":
+      return handleRedGate(state); // observed wrong effect = defect signal -> back-edge
+    case "not-run":
+      // Setup broke / report unparseable: one restart, then escalate — never read as "passed".
+      return s.retried
+        ? { kind: "ESCALATE", reason: "smoke-not-run" }
+        : { kind: "SPAWN_STATION", station: "smoke" };
+  }
 }
 
 function handleRedGate(state: DriverState): Action {
@@ -173,8 +209,10 @@ export function nextAction(state: DriverState): Action {
           : { kind: "SPAWN_STATION", station: "critic" };
       }
       if (c.verdict === "rejected") return handleRedGate(state); // back-edge via nextLoopDecision
-      // accepted: mark ready first (arms auto-merge), then behave like merge-pending.
-      return state.ready === true ? handleReady(state) : { kind: "MARK_READY" };
+      // accepted: mark ready first (arms auto-merge), then behave like merge-pending. A PR that is
+      // already ready passed every pre-ready gate (incl. smoke) — MARK_READY is only issued below.
+      if (state.ready === true) return handleReady(state);
+      return smokeGate(state) ?? { kind: "MARK_READY" };
     }
 
     case "merge-pending":

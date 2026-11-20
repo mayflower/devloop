@@ -74,8 +74,10 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
     // hook defers to CI instead of demanding the (anchor-a) local token.
     // anchor: CI is authoritative (b). twin: the optional spec-to-twin station, disabled by default
     // (discoverable here; core stays schlank). Enable via twin.enabled=true + twin.area (the protected
-    // oracle path, e.g. "services/foo/twin") — see the spec-to-twin station.
-    writeIfAbsent(".devloop/config.json", JSON.stringify({ anchor: "b", twin: { enabled: false } }, null, 2) + "\n");
+    // oracle path, e.g. "services/foo/twin") — see the spec-to-twin station. smoke: the optional
+    // smoke station, off by default (tiers: []); enable per tier + point `setup` at a repo doc that
+    // says how to start the local stack and create test accounts — see the smoke station.
+    writeIfAbsent(".devloop/config.json", JSON.stringify({ anchor: "b", twin: { enabled: false }, smoke: { tiers: [], setup: null } }, null, 2) + "\n");
     // Tier-map: NEVER shadow an existing one. resolveTierMapPath prefers .devloop/, so writing a
     // default there would silently override a repo's own tools/tier-map.json -> gate regression.
     const existingTierMap = resolveTierMapPath(targetRepo);
