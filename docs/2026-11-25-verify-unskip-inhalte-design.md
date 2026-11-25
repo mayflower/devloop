@@ -2,7 +2,7 @@
 
 > devloop, Issues #19 und #20. Nach #12 kommen alle geänderten Testpfade an; geprüft wird aber
 > der Inhalt, den `git show` liefert. Zwei Wege lassen einen aktiven Test trotzdem durch.
-> Status: **abgenommen** (2026-11-25).
+> Status: **abgenommen** (2026-11-25); Nachtrag nach Critic-Runde 1 (REQ-UNSKIPCONTENT-7, Grenzen) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 86c0be9)
 
@@ -49,6 +49,13 @@ Fehler `""`. `""` bedeutet für die Bewertung „Datei existiert in diesem Ref n
 - **REQ-UNSKIPCONTENT-6** *(ubiquitous)* — Alles andere bleibt unverändert: Pfadermittlung aus #12,
   No-op auf `devloop/spec/*`, Scope, Bewertung per `isAllowedTestEdit`, Ausgabeformat (Felder
   dürfen ergänzt werden). Unverwaltete Testpfade werden nicht gelesen und nicht bewertet.
+- **REQ-UNSKIPCONTENT-7** *(unwanted)* — Wenn ein vom Diff gemeldeter, geprüfter Testpfad weder in
+  der Basis noch im HEAD gefunden wird, soll `verify-unskip` das als Lesefehler werten (Exit 1,
+  Pfad genannt). Ein Pfad, den der Diff als geändert meldet, existiert in mindestens einem der
+  beiden Stände; „fehlt in beiden" heißt, das Lesen hat den Pfad verfehlt.
+  (Anlass Critic-Runde 1, B1: `ls-tree` las `:(top)evil.test.ts` als Pathspec-Magic, der Pfad galt
+  in beiden Refs als fehlend, ein aktiver Test ging durch — Regression gegenüber main. B2:
+  Nicht-UTF-8-Dateinamen, gleiches Muster, bestand schon vorher.)
 
 ## Detektoren (Wirkung) und Mutationsproben
 
@@ -69,6 +76,9 @@ CLI-Tests gegen `dist/cli/verify-unskip.js` in echten temporären Git-Repos:
 | Basis ohne `managed-tests.json`, Arbeitsbaum mit Scope | wie bisher (Quelle `worktree`) | — |
 | unverwalteter Symlink-Test (außerhalb des Scopes) | Exit 0, in `unmanaged` | Scope ignoriert |
 | Spec-Branch mit allen obigen Konstruktionen | Exit 0 (No-op) | — |
+| neue `:(top)evil.test.ts` bzw. `:/evil.test.ts` mit aktivem Test (Default-Scope) | Exit 1 | Pfad als Pathspec statt literal lesen |
+| Diff meldet Pfad, Leser findet ihn in keinem Ref (z. B. Nicht-UTF-8-Name oder Leser-Mutation) | Exit 1 | „fehlt in beiden" als erlaubt |
+| ausführbare Testdatei (Modus `100755`), nur `.skip` entfernt | Exit 0 | `100755` nicht als reguläre Datei |
 
 ## Bekannte Grenzen
 
@@ -78,3 +88,12 @@ CLI-Tests gegen `dist/cli/verify-unskip.js` in echten temporären Git-Repos:
   verweist, wird nicht geprüft — das ist kein Testpfad. Der Weg über einen neuen Symlink-Test ist
   durch REQ-4 geschlossen.
 - Glob-Matching für den Scope hängt weiter an #15 (`s`-Flag).
+- **Datei in PR und Basis gelöscht:** Löscht der PR eine Testdatei, die auch die (weitergelaufene)
+  Basis inzwischen gelöscht hat, fehlt sie in beiden Refs → nach REQ-7 rot. Selten; fail-closed.
+- **Replace-Refs auf dem Runner** (`refs/replace/*`) verfälschen gelesene Inhalte; das müsste ein
+  Mensch im CI setzen, `actions/checkout` holt sie nicht (Critic-Runde 1, B4).
+- **Laufzeit etwa verdoppelt** gegenüber v0.10.1 (vier statt zwei Git-Prozesse je geprüfter
+  Datei). Gemessen auf macOS: 100 Testdateien typisch 4,8 s (vorher 2,5 s), 1000 Dateien Maximum
+  43,6 s (vorher 17,1 s). Kein Fehlalarm; ein Batch-Leser (`cat-file --batch`) wäre ein eigener
+  Schritt (Critic-Runde 1, B6).
+- **Meldung über 64 MiB** nennt nur `ENOBUFS`, nicht die Grenze (B5).
