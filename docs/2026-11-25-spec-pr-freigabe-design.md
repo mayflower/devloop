@@ -3,7 +3,8 @@
 > devloop, Issue #4. Der Driver behandelt den Spec-Review-Stopp als hart für jedes Tier; der
 > CI-Anker (`verify-review`) tut das nicht. Ein Spec-PR mit Tier T0/T1 mergt ohne Review, sobald
 > das Ziel-Repo die Spec-Pfade nicht in CODEOWNERS führt (Befund two-dice/bsk, 2026-11-03, v0.8.1).
-> Status: **abgenommen** (2026-11-25); Nachtrag REQ-SPECGATE-5 (leeres Array ungültig) abgenommen 2026-11-25.
+> Status: **abgenommen** (2026-11-25); Nachtrag REQ-SPECGATE-5 (leeres Array ungültig) abgenommen 2026-11-25;
+> Nachtrag nach Critic-Runde 1 (REQ-SPECGATE-8/9, CODEOWNERS-Reihenfolge, Grenzen) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 7e4d301)
 
@@ -41,14 +42,17 @@ fail-closed, statisch, ohne vom Review-Zeitpunkt abzuhängen (kein v0.2.4-Effekt
 ## Begriffe
 
 - **Spec-Glob:** Muster für Spec-Dateien. Default `["**/spec.md"]`; überschreibbar per
-  `.devloop/spec-globs.json` (JSON-Array von Globs). Fehlt die Datei, gilt der Default; ist sie
-  kaputt oder kein Array nicht-leerer Strings, gilt fail-closed: `verify-review` schlägt fehl.
+  `.devloop/spec-globs.json` (JSON-Array von Globs), gelesen aus der **Basis** (REQ-SPECGATE-8).
+  Fehlt die Datei, gilt der Default; ist sie kaputt oder kein Array nicht-leerer Strings, gilt
+  fail-closed: `verify-review` schlägt fehl.
 - **Spec-Pfad:** ein Diff-Pfad, der auf einen Spec-Glob passt.
 - **Spec-Änderung:** ein PR, dessen Head-Branch mit `devloop/spec/` beginnt, **oder** dessen
   Diff mindestens einen Spec-Pfad enthält.
-- **Basis-CODEOWNERS:** die erste existierende Datei aus `CODEOWNERS`, `.github/CODEOWNERS`,
+- **Basis-CODEOWNERS:** die erste existierende Datei aus `.github/CODEOWNERS`, `CODEOWNERS`,
   `docs/CODEOWNERS` im Stand der Basis (`origin/<base>`), gelesen per `git show`, nicht aus dem
-  Arbeitsbaum. Das ist die Reihenfolge, in der GitHub sucht.
+  Arbeitsbaum. Das ist die Reihenfolge, in der GitHub sucht (GitHub-Doku „About code owners":
+  `.github/`, Root, `docs/`, die erste gefundene gilt). Korrigiert nach Critic-Runde 1; die
+  erste Fassung nannte Root zuerst.
 
 ## Anforderungen (EARS)
 
@@ -78,6 +82,18 @@ fail-closed, statisch, ohne vom Review-Zeitpunkt abzuhängen (kein v0.2.4-Effekt
 - **REQ-SPECGATE-7** *(ubiquitous)* — Die Basis-CODEOWNERS sollen aus dem Basis-Ref gelesen
   werden, nie aus dem PR-HEAD. Ein PR, der sich die Deckung für seine Spec-Pfade erst selbst in
   CODEOWNERS einträgt, soll REQ-SPECGATE-2 nicht bestehen.
+- **REQ-SPECGATE-8** *(ubiquitous)* — Die Spec-Globs sollen aus dem Basis-Ref gelesen werden
+  (`git show <baseRef>:.devloop/spec-globs.json`), nie aus dem PR-HEAD oder dem Arbeitsbaum.
+  Fehlt die Datei in der Basis, gilt der Default. Fehlt `baseRef` im Aufruf, gilt der Default.
+  REQ-SPECGATE-5 gilt für den Inhalt in der Basis. Ein PR, der `spec-globs.json` ändert, um
+  seine eigenen Spec-Pfade aus der Erkennung zu nehmen, soll trotzdem als Spec-Änderung gelten.
+  (Anlass Critic-Runde 1, F1: Bot-PR setzt `["nomatch/**"]` und mergt eine Spec-Änderung als T1.)
+- **REQ-SPECGATE-9** *(ubiquitous)* — Die Precondition-Action soll die Diff-Pfade so ermitteln,
+  dass jeder geänderte Pfad im Klartext ankommt: ohne Rename-Erkennung (alter **und** neuer Pfad
+  eines Renames erscheinen) und ohne Git-Quoting (Pfade mit Nicht-ASCII-Zeichen oder
+  Sonderzeichen unverändert). Das gilt für jeden Diff-Aufruf der Action. Die Action soll
+  `headRef`, `baseRef` und `repo` an `verify-review` übergeben.
+  (Anlass Critic-Runde 1, F2/F3/F6.)
 
 ## Umsetzung (Skizze, nicht bindend)
 
@@ -110,6 +126,13 @@ Alle als CLI-Tests gegen `dist/cli/verify-review.js` in einem temporären Git-Re
 | T0, `feature/y`, Diff `src/a.ts`, keine Reviews | `ok:true` (wie bisher) | Spec-Bedingung immer wahr |
 | `.devloop/spec-globs.json` = `["docs/specs/*.md"]`, Diff `docs/specs/a.md` ungedeckt | `ok:false` | Config ignoriert |
 | `.devloop/spec-globs.json` = `{}` | `ok:false` | Config-Fehler still auf Default |
+| Basis ohne `spec-globs.json`, PR setzt `["nomatch/**"]` und ändert `specs/x/spec.md` ungedeckt | `ok:false` | Globs aus HEAD/Arbeitsbaum lesen |
+| Basis-`spec-globs.json` = `["docs/specs/*.md"]`, HEAD-Arbeitsbaum ohne die Datei, Diff `docs/specs/a.md` ungedeckt | `ok:false` | dto. |
+| Basis: Root-`CODEOWNERS` deckt `specs/`, `.github/CODEOWNERS` nicht | `ok:false` | Root zuerst lesen |
+| Action-Schritte real ausgeführt (temp. Repo, `gh` gestubbt): Rename `specs/x/spec.md` → `specs/x/spec.md.old` auf `devloop/x`, ungedeckt | Schritt rot | Rename-Erkennung an |
+| dto.: `feature/größe` mit neuer `specs/größe/spec.md`, ungedeckt | Schritt rot | Quoting an |
+| dto.: Spec-Branch, nur Test geändert | Schritt rot (REQ-3) | `headRef` nicht übergeben |
+| dto.: Spec gedeckt, keine Reviews | Schritt grün, `pending` | `baseRef` nicht übergeben |
 
 Mutationen werden im Implementierungs-PR tatsächlich gefahren und mit Ergebnis (welcher Test rot)
 in der PR-Beschreibung dokumentiert.
@@ -129,5 +152,16 @@ in der PR-Beschreibung dokumentiert.
   hat dafür keine Rechte. Bleibt Setup-Pflicht wie bisher.
 - **`check-codeowners` liest weiter aus dem HEAD** (Ist-Punkt 6, gilt für T2/T3-Pfade). Gleiche
   Lücke, eigener Fix; hier nur notiert, nicht Teil dieses Docs.
+- **CODEOWNERS-Matching ist großzügig** (`codeownersCovers`, aus dem Drift-Wächter
+  übernommen, im Zweifel „gedeckt"). Beispiel: `docs/specs/ @x` gilt hier auch für
+  `vendor/docs/specs/…`, GitHub verankert ein Muster mit innerem `/` aber an der Wurzel. Greift
+  nur bei ungewöhnlichen Mustern, die ein Mensch in CODEOWNERS schreibt (Critic-Runde 1, F5).
+- **Nach `/devloop:init` ist der erste Spec-PR rot**, weil `init` CODEOWNERS nur für die
+  T2/T3-Pfade anlegt. Fail-closed und dokumentiert; Scaffold für Spec-Pfade wäre bequemer (F7).
+- **Owner ohne Schreibrecht und der Platzhalter `@OWNER`** zählen als Deckung; GitHub ignoriert
+  solche Zeilen. Ohne API-Rechte nicht prüfbar, gleiche Klasse wie Branch-Protection (F8).
+- **`.devloop/**` ist im Init-Skeleton nicht geschützt**, obwohl `init.ts` das im Kommentar
+  behauptet. Für die Spec-Globs durch REQ-SPECGATE-8 entschärft; für andere `.devloop/`-Dateien
+  eigener Fix (eigenes Issue), hier nicht Teil des Docs.
 - Fällt Issue #11 (Spec-Kritiker statt Menschen-Stopp) positiv aus, ist dieses Design neu zu
   bewerten.
