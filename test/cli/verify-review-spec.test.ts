@@ -110,8 +110,24 @@ test("[REQ-SPECGATE-2] Basis-CODEOWNERS in docs/ deckt specs/ -> Gate besteht (p
   expect(r.out.pending).toBe(true);
 });
 
-test("[REQ-SPECGATE-2] erste existierende Datei gewinnt: CODEOWNERS ohne specs/ schlaegt .github/CODEOWNERS mit specs/", () => {
+test("[REQ-SPECGATE-2] Reihenfolge wie GitHub: .github/CODEOWNERS (deckt specs/) schlaegt Root-CODEOWNERS (deckt nicht)", () => {
   const repo = makeRepo({ CODEOWNERS: "/src/ @alice\n", ".github/CODEOWNERS": COVER_SPECS });
+  const r = run(repo, specBranch);
+  expect(r.status).toBe(0);
+  expect(r.out.ok).toBe(true);
+  expect(r.out.pending).toBe(true);
+});
+
+test("[REQ-SPECGATE-2] Reihenfolge wie GitHub: Root deckt specs/, .github/CODEOWNERS deckt nicht -> ok:false", () => {
+  const repo = makeRepo({ CODEOWNERS: COVER_SPECS, ".github/CODEOWNERS": "/src/ @alice\n" });
+  const r = run(repo, specBranch);
+  expect(r.status).toBe(1);
+  expect(r.out.ok).toBe(false);
+  expect(r.out.reason).toMatch(/^spec-unguarded/);
+});
+
+test("[REQ-SPECGATE-2] Reihenfolge wie GitHub: Root vor docs/ (Root ohne specs/, docs/ mit specs/ -> ok:false)", () => {
+  const repo = makeRepo({ CODEOWNERS: "/src/ @alice\n", "docs/CODEOWNERS": COVER_SPECS });
   const r = run(repo, specBranch);
   expect(r.out.ok).toBe(false);
   expect(r.out.reason).toMatch(/^spec-unguarded/);
@@ -313,5 +329,60 @@ test("[REQ-SPECGATE-7] Gegenprobe: Basis deckt specs/, HEAD streicht die Deckung
   const r = run(repo, specBranch);
   expect(r.status).toBe(0);
   expect(r.out.ok).toBe(true);
+  expect(r.out.pending).toBe(true);
+});
+
+// Hilfsfunktion fuer REQ-8: Branch "feature" mit Aenderungen an Dateien (null = loeschen), als Commit.
+function branchWith(repo: string, files: Record<string, string | null>): void {
+  git(repo, "checkout", "-q", "-b", "feature");
+  for (const [p, c] of Object.entries(files)) {
+    if (c === null) git(repo, "rm", "-q", p);
+    else write(repo, p, c);
+  }
+  git(repo, "add", "-A");
+  git(repo, "commit", "-q", "-m", "pr");
+}
+
+test("[REQ-SPECGATE-8] Basis ohne spec-globs.json, PR setzt nomatch/** (Commit + Arbeitsbaum) und aendert specs/x/spec.md ungedeckt -> spec-unguarded", () => {
+  const repo = makeRepo({ CODEOWNERS: "/src/ @alice\n" });
+  branchWith(repo, { ".devloop/spec-globs.json": '["nomatch/**"]', "specs/x/spec.md": "s\n" });
+  const r = run(repo, { headRef: "devloop/x", diffPaths: ["specs/x/spec.md", ".devloop/spec-globs.json"], reviews: [] });
+  expect(r.status).toBe(1);
+  expect(r.out.ok).toBe(false);
+  expect(r.out.reason).toMatch(/^spec-unguarded/);
+  expect(r.stdout).toContain("specs/x/spec.md");
+});
+
+test("[REQ-SPECGATE-8] Basis-spec-globs.json = docs/specs/*.md, im PR geloescht; Diff docs/specs/a.md ungedeckt -> ok:false", () => {
+  const repo = makeRepo({ CODEOWNERS: "/src/ @alice\n", ".devloop/spec-globs.json": '["docs/specs/*.md"]' });
+  branchWith(repo, { ".devloop/spec-globs.json": null });
+  const r = run(repo, { headRef: "devloop/x", diffPaths: ["docs/specs/a.md", ".devloop/spec-globs.json"], reviews: [] });
+  expect(r.status).toBe(1);
+  expect(r.out.ok).toBe(false);
+  expect(r.stdout).toContain("docs/specs/a.md");
+});
+
+test("[REQ-SPECGATE-8] Basis-spec-globs.json ungueltig ([]), Arbeitsbaum gueltig -> ok:false (REQ-5 auf Basis-Inhalt)", () => {
+  const repo = makeRepo({ CODEOWNERS: COVER_SPECS, ".devloop/spec-globs.json": "[]" });
+  branchWith(repo, { ".devloop/spec-globs.json": '["**/spec.md"]' });
+  const r = run(repo, { headRef: "feature/y", diffPaths: ["src/a.ts"], reviews: [] });
+  expect(r.status).toBe(1);
+  expect(r.out.ok).toBe(false);
+});
+
+test("[REQ-SPECGATE-8] Gegenprobe: Arbeitsbaum ungueltig ({}), Basis ohne Datei -> kein Config-Fehler, Nicht-Spec-PR ok", () => {
+  const repo = makeRepo({ CODEOWNERS: COVER_SPECS });
+  branchWith(repo, { ".devloop/spec-globs.json": "{}" });
+  write(repo, ".devloop/spec-globs.json", "{}"); // auch im Arbeitsbaum
+  const r = run(repo, { headRef: "feature/y", diffPaths: ["src/a.ts"], reviews: [] });
+  expect(r.status).toBe(0);
+  expect(r.out.ok).toBe(true);
+});
+
+test("[REQ-SPECGATE-8] Arbeitsbaum ungueltig ({}), Basis ohne Datei -> Default gilt: gedeckte Spec-Aenderung ist pending", () => {
+  const repo = makeRepo({ CODEOWNERS: COVER_SPECS });
+  branchWith(repo, { ".devloop/spec-globs.json": "{}" });
+  const r = run(repo, { headRef: "devloop/x", diffPaths: ["specs/x/spec.md"], reviews: [] });
+  expect(r.status).toBe(0);
   expect(r.out.pending).toBe(true);
 });
