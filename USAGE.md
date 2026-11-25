@@ -48,8 +48,21 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      auf die Pfade, die `spec-to-tests` wirklich autort (deine Käfig-Services / Twin-Areas),
      sonst blockiert `verify-unskip` jeden gewöhnlichen PR, der eine normale aktive Testdatei
      hinzufügt. Fehlt die Datei (oder ist sie kaputt), gilt fail-closed „alles verwaltet".
+   - `.devloop/spec-globs.json` — **was als Spec-Datei gilt** (JSON-Array nicht-leerer Globs). Fehlt die
+     Datei, gilt `["**/spec.md"]`; eigene Globs **ersetzen** den Default. Ungültig (kein JSON, kein Array,
+     **leeres Array**, Element kein nicht-leerer String) → `verify-review` failt fail-closed, bei jedem PR.
+     Beispiel: `["docs/specs/*.md"]`. Die Datei liegt unter `.devloop/` (geschützter Satz).
 5. **CODEOWNERS = das §9-Merge-Tor (wichtig).** CODEOWNERS muss decken:
-   - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig;
+   - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig.
+     **Pflicht seit v0.10.0 und wird erzwungen:** Bei jeder Spec-Änderung (Head-Branch `devloop/spec/*`
+     **oder** ein Spec-Pfad im Diff) prüft `verify-review`, ob die **CODEOWNERS der Basis** (`origin/<base>`, per
+     `git show`, nie aus dem PR-HEAD; erste existierende Datei aus `CODEOWNERS`, `.github/CODEOWNERS`,
+     `docs/CODEOWNERS`) jeden geänderten Spec-Pfad decken. Sonst `ok:false` mit `spec-unguarded` und den
+     ungedeckten Pfaden. Ein PR, der sich die Deckung selbst einträgt, besteht nicht. Für Spec-Änderungen
+     greift die T0/T1-Abkürzung nicht mehr: gültige Human-Approval auf HEAD → ok, keine → pending,
+     ungültige (Bot, Autor, veraltet) → `ok:false`. Ein `devloop/spec/*`-PR ohne erkennbaren Spec-Pfad
+     (z.B. nur Tests) schlägt ebenfalls mit `spec-unguarded` fehl. **Bestehende Ziel-Repos ohne
+     Spec-Deckung werden bei Spec-PRs rot** — vor dem Upgrade CODEOWNERS ergänzen;
    - **alle T2/T3-Pfade aus deiner `tier-map`** (auth, migrations, contracts, `src/**`, …).
    So funktioniert §9 serverseitig: **T0/T1 berührt keine CODEOWNER-Pfade → kein Review nötig → Auto-Merge;
    T2/T3 berührt CODEOWNER-Pfade → required Review.** `verify-review` failt **nicht** auf „noch nicht
