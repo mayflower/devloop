@@ -3,7 +3,7 @@
 > devloop, Issue #4. Der Driver behandelt den Spec-Review-Stopp als hart für jedes Tier; der
 > CI-Anker (`verify-review`) tut das nicht. Ein Spec-PR mit Tier T0/T1 mergt ohne Review, sobald
 > das Ziel-Repo die Spec-Pfade nicht in CODEOWNERS führt (Befund two-dice/bsk, 2026-11-03, v0.8.1).
-> Status: **abgenommen** (2026-11-25).
+> Status: **abgenommen** (2026-11-25); Nachtrag REQ-SPECGATE-5 (leeres Array ungültig) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 7e4d301)
 
@@ -69,6 +69,10 @@ fail-closed, statisch, ohne vom Review-Zeitpunkt abzuhängen (kein v0.2.4-Effekt
   (Bot, Autor, veraltet) → `ok: false`.
 - **REQ-SPECGATE-5** *(unwanted)* — Wenn `.devloop/spec-globs.json` existiert, aber kein
   JSON-Array nicht-leerer Strings ist, soll `verify-review` mit `ok: false` fehlschlagen.
+  Ein leeres Array `[]` gilt als ungültig (Nachtrag 2026-11-25): Es schaltete die
+  Pfad-Erkennung ab, und ein Impl-PR, der die Spec mitändert, liefe wieder ohne Review.
+  Die Config gilt unabhängig davon, ob der PR eine Spec-Änderung ist — ohne gültige Globs
+  ist das nicht entscheidbar.
 - **REQ-SPECGATE-6** *(ubiquitous)* — Ein PR, der keine Spec-Änderung ist, soll sich genau wie
   bisher verhalten (Gate-Tamper, Tier-Logik, Approval-Bewertung unverändert).
 - **REQ-SPECGATE-7** *(ubiquitous)* — Die Basis-CODEOWNERS sollen aus dem Basis-Ref gelesen
