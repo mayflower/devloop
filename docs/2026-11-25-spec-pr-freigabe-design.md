@@ -3,7 +3,7 @@
 > devloop, Issue #4. Der Driver behandelt den Spec-Review-Stopp als hart für jedes Tier; der
 > CI-Anker (`verify-review`) tut das nicht. Ein Spec-PR mit Tier T0/T1 mergt ohne Review, sobald
 > das Ziel-Repo die Spec-Pfade nicht in CODEOWNERS führt (Befund two-dice/bsk, 2026-11-03, v0.8.1).
-> Status: **Entwurf** (2026-11-25), wartet auf Abnahme.
+> Status: **abgenommen** (2026-11-25).
 
 ## Ist-Zustand (main, 7e4d301)
 
