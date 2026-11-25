@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isAllowedTestEdit, isSpecBranch } from "../core/unskip.js";
 import { parseNulPaths } from "../core/diff-paths.js";
+import { readTreeEntry, TreeEntryReadError, type TreeEntry } from "../core/tree-entry.js";
 import {
   MANAGED_TESTS_PATH,
   isManagedTestPath,
@@ -33,19 +34,6 @@ if (isSpecBranch(headBranch)) {
   process.exit(0);
 }
 
-const gitSafe = (args: string[]): string => {
-  try {
-    // stderr ignored: `git show <ref>:<new file>` legitimately fails for every file the PR adds
-    // (and for an absent config) — the "fatal: path ... does not exist" noise is not a finding.
-    return execFileSync("git", ["-C", repo, ...args], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-  } catch {
-    return "";
-  }
-};
-
 const TEST_FILE = /\.(test|spec)\.[jt]sx?$/;
 
 // The glob list is read from the BASE ref first: the scope that is already on the protected
@@ -59,10 +47,27 @@ const readWorktree = (rel: string): string => {
     return "";
   }
 };
-const fromBase = gitSafe(["show", `${base}:${MANAGED_TESTS_PATH}`]);
-const fromWorktree = fromBase === "" ? readWorktree(MANAGED_TESTS_PATH) : "";
-const managedRaw = fromBase !== "" ? fromBase : fromWorktree;
-const managedSource = fromBase !== "" ? "base" : fromWorktree !== "" ? "worktree" : "default";
+// Read errors fail closed (exit 1) — never "empty", never a fallback to the PR's own worktree.
+const fail = (msg: string): never => {
+  process.stderr.write(`verify-unskip: ${msg}\n`);
+  process.exit(1);
+};
+const entryAt = (ref: string, path: string): TreeEntry => {
+  try {
+    return readTreeEntry(repo, ref, path);
+  } catch (e) {
+    return fail(e instanceof TreeEntryReadError ? e.message : `cannot read ${path} @ ${ref}: ${String(e)}`);
+  }
+};
+
+const cfg = entryAt(base, MANAGED_TESTS_PATH);
+if (cfg.kind !== "missing" && cfg.kind !== "file") {
+  fail(`${MANAGED_TESTS_PATH} @ ${base} exists but is not a regular file (${cfg.kind}); refusing to guess the scope`);
+}
+const fromBase = cfg.kind === "file" ? cfg.content : "";
+const fromWorktree = cfg.kind === "missing" ? readWorktree(MANAGED_TESTS_PATH) : "";
+const managedRaw = cfg.kind === "file" ? fromBase : fromWorktree;
+const managedSource = cfg.kind === "file" ? "base" : fromWorktree !== "" ? "worktree" : "default";
 const managedGlobs = parseManagedTestGlobs(managedRaw);
 
 // The changed paths: NUL-separated (-z: no quoting of non-ASCII/special characters) and without
@@ -92,9 +97,33 @@ const changed = testFiles.filter((f) => isManagedTestPath(f, managedGlobs));
 const unmanaged = testFiles.filter((f) => !isManagedTestPath(f, managedGlobs));
 
 const violations: { file: string; reason: string }[] = [];
+const describe = (e: TreeEntry): string | null =>
+  e.kind === "symlink"
+    ? "symlink"
+    : e.kind === "submodule"
+      ? "submodule (gitlink)"
+      : e.kind === "other"
+        ? e.type
+        : null;
+const contentOf = (e: TreeEntry): string => (e.kind === "file" ? e.content : ""); // "" = absent
+
 for (const file of changed) {
-  const oldContent = gitSafe(["show", `${base}:${file}`]); // "" if the file is new
-  const newContent = gitSafe(["show", `HEAD:${file}`]);
+  const oldEntry = entryAt(base, file);
+  const newEntry = entryAt("HEAD", file);
+  const oldType = describe(oldEntry);
+  const newType = describe(newEntry);
+  if (oldType !== null || newType !== null) {
+    const where = [oldType !== null ? `${oldType} in base` : "", newType !== null ? `${newType} in HEAD` : ""]
+      .filter((x) => x !== "")
+      .join(", ");
+    violations.push({
+      file,
+      reason: `managed test path is not a regular file (${where}); only regular test files are allowed`,
+    });
+    continue;
+  }
+  const oldContent = contentOf(oldEntry); // "" if the file is new
+  const newContent = contentOf(newEntry);
   if (!isAllowedTestEdit(oldContent, newContent)) {
     violations.push({
       file,
