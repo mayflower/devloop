@@ -2,7 +2,8 @@
 
 > devloop, Issues #19 und #20. Nach #12 kommen alle geänderten Testpfade an; geprüft wird aber
 > der Inhalt, den `git show` liefert. Zwei Wege lassen einen aktiven Test trotzdem durch.
-> Status: **abgenommen** (2026-11-25); Nachtrag nach Critic-Runde 1 (REQ-UNSKIPCONTENT-7, Grenzen) abgenommen 2026-11-25.
+> Status: **abgenommen** (2026-11-25); Nachtrag nach Critic-Runde 1 (REQ-UNSKIPCONTENT-7, Grenzen) abgenommen 2026-11-25;
+> Nachtrag „Bekannte Grenzen“ nach Critic-Runde 2 (accepted) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 86c0be9)
 
@@ -97,3 +98,18 @@ CLI-Tests gegen `dist/cli/verify-unskip.js` in echten temporären Git-Repos:
   43,6 s (vorher 17,1 s). Kein Fehlalarm; ein Batch-Leser (`cat-file --batch`) wäre ein eigener
   Schritt (Critic-Runde 1, B6).
 - **Meldung über 64 MiB** nennt nur `ENOBUFS`, nicht die Grenze (B5).
+- **Nicht-UTF-8-Pfade werden abgewiesen, nicht bewertet.** Node übergibt Argumente an Git als
+  UTF-8; der Originalpfad erreicht `ls-tree` nicht. REQ-7 macht daraus Exit 1 (fail-closed).
+  Liegt neben dem Nicht-UTF-8-Namen eine Datei, deren Name der verlustbehafteten Dekodierung
+  entspricht (U+FFFD), lesen beide Seiten diese Zwillingsdatei und REQ-7 greift nicht. Node
+  dekodiert beim Laden genauso; auf APFS nicht herstellbar (Critic-Runde 2, D1).
+- **macOS-Runner mit `core.precomposeunicode=true` und NFD-Dateinamen:** eine neue, nur
+  geskippte NFD-Testdatei wird rot („found in neither"). Falsch rot, sichere Richtung; auf Linux
+  kein Unterschied. Zugleich ist der main-Bypass (NFD-Test aktiv geändert) geschlossen (D2).
+- **Doppelte Baumeinträge** (Baum mit zweimal demselben Namen, `git fsck` meldet
+  `duplicateEntries`): Der Leser nimmt den letzten Eintrag, wie `checkout`. Kein Test pinnt das;
+  ob GitHub solche Bäume beim Push annimmt, ist nicht geprüft (D3).
+- **Leere `managed-tests.json` in der Basis** gilt jetzt als Quelle „base" (Default: alles
+  verwaltet), statt auf den Arbeitsbaum zurückzufallen. Strenger, entspricht REQ-5 (D4).
+- **Testdatei-Endungen:** `.mts/.cts/.mjs/.cjs` erkennt die Naht nicht als Testdatei, vitest
+  schon. Bestand schon vorher, Pfaderkennung ist hier eingefroren (REQ-6); eigener Fix (#23).
