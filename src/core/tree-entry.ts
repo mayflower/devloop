@@ -17,14 +17,18 @@ export class TreeEntryReadError extends Error {}
 
 const git = (repo: string, args: string[], maxBuffer: number): string => {
   try {
-    return execFileSync("git", ["-C", repo, ...args], {
+    // --literal-pathspecs: a path such as ":(top)x" or ":/x" is a file name here, never pathspec magic.
+    return execFileSync("git", ["-C", repo, "--literal-pathspecs", ...args], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       maxBuffer,
     });
   } catch (e) {
-    const err = e as { stderr?: unknown; message?: string };
-    const detail = String(err.stderr ?? "").trim() || err.message || String(e);
+    const err = e as { stderr?: unknown; message?: string; code?: string };
+    const detail =
+      err.code === "ENOBUFS"
+        ? `content exceeds the read limit of ${Math.round(maxBuffer / (1024 * 1024))} MiB (ENOBUFS)`
+        : String(err.stderr ?? "").trim() || err.message || String(e);
     throw new TreeEntryReadError(detail);
   }
 };

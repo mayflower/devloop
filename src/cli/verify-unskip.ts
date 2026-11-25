@@ -110,6 +110,11 @@ const contentOf = (e: TreeEntry): string => (e.kind === "file" ? e.content : "")
 for (const file of changed) {
   const oldEntry = entryAt(base, file);
   const newEntry = entryAt("HEAD", file);
+  // The diff reported this path as changed, so it exists in base or HEAD. Missing in both means
+  // the read missed it (e.g. a name that did not survive decoding): a read error, never "empty".
+  if (oldEntry.kind === "missing" && newEntry.kind === "missing") {
+    fail(`changed test path ${JSON.stringify(file)} was found in neither ${base} nor HEAD (read error)`);
+  }
   const oldType = describe(oldEntry);
   const newType = describe(newEntry);
   if (oldType !== null || newType !== null) {
