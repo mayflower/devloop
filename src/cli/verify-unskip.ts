@@ -15,6 +15,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isAllowedTestEdit, isSpecBranch } from "../core/unskip.js";
+import { parseNulPaths } from "../core/diff-paths.js";
 import {
   MANAGED_TESTS_PATH,
   isManagedTestPath,
@@ -64,9 +65,28 @@ const managedRaw = fromBase !== "" ? fromBase : fromWorktree;
 const managedSource = fromBase !== "" ? "base" : fromWorktree !== "" ? "worktree" : "default";
 const managedGlobs = parseManagedTestGlobs(managedRaw);
 
-const testFiles = gitSafe(["diff", "--name-only", `${base}...HEAD`])
-  .split("\n")
-  .filter((f) => TEST_FILE.test(f));
+// The changed paths: NUL-separated (-z: no quoting of non-ASCII/special characters) and without
+// rename detection (a rename shows BOTH the old and the new path, so the old one is judged as a
+// deletion). Unlike `git show` of an absent file, a failing diff (unresolvable base, ...) is NOT
+// "no test files": it fails closed with exit 1.
+const changedPaths = (): string[] => {
+  try {
+    const raw = execFileSync(
+      "git",
+      ["-C", repo, "diff", "--no-renames", "-z", "--name-only", `${base}...HEAD`],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 },
+    );
+    return parseNulPaths(raw);
+  } catch (e) {
+    const detail = String((e as { stderr?: unknown }).stderr ?? (e as Error).message ?? e).trim();
+    process.stderr.write(
+      `verify-unskip: cannot compute the changed paths against base "${base}" (git diff failed): ${detail}\n`,
+    );
+    process.exit(1);
+  }
+};
+
+const testFiles = changedPaths().filter((f) => TEST_FILE.test(f));
 
 const changed = testFiles.filter((f) => isManagedTestPath(f, managedGlobs));
 const unmanaged = testFiles.filter((f) => !isManagedTestPath(f, managedGlobs));
@@ -81,7 +101,9 @@ for (const file of changed) {
       reason:
         oldContent === ""
           ? "new test file contains an active (non-.skip) test (spec-PR tests must be skipped)"
-          : "existing test file changed beyond removing `.skip` (implement must not edit tests)",
+          : newContent === ""
+            ? "existing test file deleted or emptied (also when renamed away; implement must not remove tests)"
+            : "existing test file changed beyond removing `.skip` (implement must not edit tests)",
     });
   }
 }
