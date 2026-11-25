@@ -4,9 +4,9 @@
 > das Default-Include von vitest. Dateien dazwischen führt vitest aus, die Naht prüft sie nicht.
 > Status: **Entwurf** (2026-11-25), wartet auf Abnahme.
 
-## Ist-Zustand (main, 86c0be9)
+## Ist-Zustand (main, e565b3e — v0.10.2)
 
-- `src/cli/verify-unskip.ts:49`: `TEST_FILE = /\.(test|spec)\.[jt]sx?$/` — einzige Stelle im Code,
+- `src/cli/verify-unskip.ts:37`: `TEST_FILE = /\.(test|spec)\.[jt]sx?$/` — einzige Stelle im Code,
   die eine Testdatei definiert.
 - vitest 2.1.9 (Repo-Stand) Default-Include: `**/*.{test,spec}.?(c|m)[jt]s?(x)`.
 - Lücke: `.mts`, `.cts`, `.mjs`, `.cjs` (und `.mtsx`/`.ctsx`/`.mjsx`/`.cjsx`). Gemessen (Critic zu
