@@ -26,7 +26,7 @@ if (req.diffPaths &&
 const repo = req.repo ?? ".";
 let globs;
 try {
-    globs = specGlobs(repo);
+    globs = specGlobs(repo, req.baseRef);
 }
 catch (e) {
     fail(`spec-globs-invalid: ${e.message}`);

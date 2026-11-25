@@ -47,10 +47,22 @@ test("parseSpecGlobs: kaputt, kein Array, leer, leerer String, Nicht-String -> w
   }
 });
 
-test("specGlobs: Datei fehlt -> Default; vorhanden -> Config ersetzt Default; ungueltig -> wirft", () => {
-  expect(specGlobs(repoWith({}))).toEqual(["**/spec.md"]);
-  expect(specGlobs(repoWith({ ".devloop/spec-globs.json": '["x/*.md"]' }))).toEqual(["x/*.md"]);
-  expect(() => specGlobs(repoWith({ ".devloop/spec-globs.json": "[]" }))).toThrow();
+test("specGlobs: liest die BASIS; Datei fehlt in Basis oder baseRef fehlt -> Default; ungueltiger Basis-Inhalt -> wirft", () => {
+  expect(specGlobs(repoWith({}), "base")).toEqual(["**/spec.md"]);
+  expect(specGlobs(repoWith({ ".devloop/spec-globs.json": '["x/*.md"]' }), "base")).toEqual(["x/*.md"]);
+  expect(specGlobs(repoWith({ ".devloop/spec-globs.json": '["x/*.md"]' }))).toEqual(["**/spec.md"]); // kein baseRef
+  expect(() => specGlobs(repoWith({ ".devloop/spec-globs.json": "[]" }), "base")).toThrow();
+  expect(() => specGlobs(repoWith({}), "nope")).toThrow(); // unaufloesbarer Ref != Datei fehlt
+});
+
+test("specGlobs: Arbeitsbaum zaehlt nicht (weder neue noch geloeschte Datei)", () => {
+  const r = repoWith({ ".devloop/spec-globs.json": '["x/*.md"]' });
+  writeFileSync(join(r, ".devloop/spec-globs.json"), '["nomatch/**"]');
+  expect(specGlobs(r, "base")).toEqual(["x/*.md"]);
+  const r2 = repoWith({});
+  mkdirSync(join(r2, ".devloop"), { recursive: true });
+  writeFileSync(join(r2, ".devloop/spec-globs.json"), "{}"); // kaputt, aber nur im Arbeitsbaum
+  expect(specGlobs(r2, "base")).toEqual(["**/spec.md"]);
 });
 
 test("isSpecChange: Branch ODER Pfad", () => {
@@ -64,8 +76,9 @@ test("isSpecChange: Branch ODER Pfad", () => {
 });
 
 test("readBaseCodeowners: Reihenfolge, erste existierende gewinnt; keine -> null", () => {
-  const r = repoWith({ CODEOWNERS: "/a/ @x\n", ".github/CODEOWNERS": "/b/ @x\n" });
-  expect(readBaseCodeowners(r, "base")).toBe("/a/ @x\n");
+  const r = repoWith({ CODEOWNERS: "/a/ @x\n", ".github/CODEOWNERS": "/b/ @x\n", "docs/CODEOWNERS": "/d/ @x\n" });
+  expect(readBaseCodeowners(r, "base")).toBe("/b/ @x\n"); // .github/ vor Root vor docs/
+  expect(readBaseCodeowners(repoWith({ CODEOWNERS: "/a/ @x\n", "docs/CODEOWNERS": "/d/ @x\n" }), "base")).toBe("/a/ @x\n");
   expect(readBaseCodeowners(repoWith({ "docs/CODEOWNERS": "/c/ @x\n" }), "base")).toBe("/c/ @x\n");
   expect(readBaseCodeowners(repoWith({}), "base")).toBeNull();
 });

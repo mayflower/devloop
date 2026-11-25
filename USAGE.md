@@ -51,13 +51,13 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
    - `.devloop/spec-globs.json` — **was als Spec-Datei gilt** (JSON-Array nicht-leerer Globs). Fehlt die
      Datei, gilt `["**/spec.md"]`; eigene Globs **ersetzen** den Default. Ungültig (kein JSON, kein Array,
      **leeres Array**, Element kein nicht-leerer String) → `verify-review` failt fail-closed, bei jedem PR.
-     Beispiel: `["docs/specs/*.md"]`. Die Datei liegt unter `.devloop/` (geschützter Satz).
+     Beispiel: `["docs/specs/*.md"]`. Die Globs werden aus der **Basis** gelesen (`git show origin/<base>:.devloop/spec-globs.json`), nicht aus dem PR: Eine Änderung der Datei wirkt erst nach dem Merge, ein PR kann sich so nicht selbst aus der Spec-Erkennung nehmen. Fehlt die Datei in der Basis, gilt der Default.
 5. **CODEOWNERS = das §9-Merge-Tor (wichtig).** CODEOWNERS muss decken:
    - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig.
      **Pflicht seit v0.10.0 und wird erzwungen:** Bei jeder Spec-Änderung (Head-Branch `devloop/spec/*`
      **oder** ein Spec-Pfad im Diff) prüft `verify-review`, ob die **CODEOWNERS der Basis** (`origin/<base>`, per
-     `git show`, nie aus dem PR-HEAD; erste existierende Datei aus `CODEOWNERS`, `.github/CODEOWNERS`,
-     `docs/CODEOWNERS`) jeden geänderten Spec-Pfad decken. Sonst `ok:false` mit `spec-unguarded` und den
+     `git show`, nie aus dem PR-HEAD; erste existierende Datei aus `.github/CODEOWNERS`, `CODEOWNERS`,
+     `docs/CODEOWNERS`, GitHubs Suchreihenfolge) jeden geänderten Spec-Pfad decken. Sonst `ok:false` mit `spec-unguarded` und den
      ungedeckten Pfaden. Ein PR, der sich die Deckung selbst einträgt, besteht nicht. Für Spec-Änderungen
      greift die T0/T1-Abkürzung nicht mehr: gültige Human-Approval auf HEAD → ok, keine → pending,
      ungültige (Bot, Autor, veraltet) → `ok:false`. Ein `devloop/spec/*`-PR ohne erkennbaren Spec-Pfad

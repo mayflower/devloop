@@ -3,8 +3,6 @@
 // prueft: die CODEOWNERS der BASIS muessen jeden geaenderten Spec-Pfad decken. Dieses Modul
 // entscheidet das statisch und fail-closed.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { codeownersCovers, parseCodeowners } from "./codeowners.js";
 import { matchesAnyGlob } from "./glob.js";
 import { isSpecBranch } from "./unskip.js";
@@ -12,7 +10,7 @@ import { isSpecBranch } from "./unskip.js";
 export const SPEC_GLOBS_PATH = ".devloop/spec-globs.json";
 export const DEFAULT_SPEC_GLOBS = ["**/spec.md"];
 /** Reihenfolge, in der GitHub CODEOWNERS sucht; die erste existierende gewinnt. */
-export const CODEOWNERS_PATHS = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"];
+export const CODEOWNERS_PATHS = [".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"];
 export class SpecConfigError extends Error {
 }
 /**
@@ -37,18 +35,16 @@ export function parseSpecGlobs(raw) {
     }
     return parsed;
 }
-/** Spec-Globs des Repos: Datei fehlt -> Default; Datei vorhanden aber ungueltig -> wirft. */
-export function specGlobs(repo) {
-    let raw;
-    try {
-        raw = readFileSync(join(repo, SPEC_GLOBS_PATH), "utf8");
-    }
-    catch (e) {
-        if (e.code === "ENOENT")
-            return [...DEFAULT_SPEC_GLOBS];
-        throw new SpecConfigError(`${SPEC_GLOBS_PATH} nicht lesbar`);
-    }
-    return parseSpecGlobs(raw);
+/**
+ * Spec-Globs aus der BASIS (REQ-SPECGATE-8), nie aus Arbeitsbaum/HEAD: ein PR darf sich seine
+ * Spec-Pfade nicht per spec-globs.json aus der Erkennung nehmen. Fehlt baseRef oder die Datei in
+ * der Basis -> Default; Inhalt ungueltig -> wirft SpecConfigError; baseRef nicht aufloesbar -> wirft.
+ */
+export function specGlobs(repo, baseRef) {
+    if (!baseRef)
+        return [...DEFAULT_SPEC_GLOBS];
+    const raw = readBaseFile(repo, baseRef, SPEC_GLOBS_PATH);
+    return raw === null ? [...DEFAULT_SPEC_GLOBS] : parseSpecGlobs(raw);
 }
 export const specPaths = (diffPaths, globs) => diffPaths.filter((p) => matchesAnyGlob(p, globs));
 /** Spec-Aenderung: Head-Branch devloop/spec/* ODER mindestens ein Spec-Pfad im Diff. */
@@ -59,11 +55,11 @@ function git(repo, args) {
     return execFileSync("git", args, { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
 /**
- * Basis-CODEOWNERS per `git show <baseRef>:<pfad>`, nie aus dem Arbeitsbaum. Liefert den Inhalt der
- * ersten existierenden Datei oder null (keine CODEOWNERS in der Basis). Ein unaufloesbarer baseRef
- * wirft (fail-closed), statt als "keine CODEOWNERS" durchzugehen.
+ * Datei aus dem Basis-Ref per `git show <baseRef>:<pfad>`, nie aus dem Arbeitsbaum. null = der Pfad
+ * existiert in der Basis nicht. Ein unaufloesbarer baseRef wirft (fail-closed) und wird nicht mit
+ * "Datei fehlt" verwechselt.
  */
-export function readBaseCodeowners(repo, baseRef) {
+export function readBaseFile(repo, baseRef, path) {
     if (baseRef.startsWith("-"))
         throw new Error(`ungueltiger baseRef: ${baseRef}`);
     try {
@@ -72,13 +68,19 @@ export function readBaseCodeowners(repo, baseRef) {
     catch {
         throw new Error(`baseRef nicht aufloesbar: ${baseRef}`);
     }
+    try {
+        return git(repo, ["show", `${baseRef}:${path}`]);
+    }
+    catch {
+        return null;
+    }
+}
+/** Basis-CODEOWNERS: erste existierende Datei in GitHubs Suchreihenfolge, sonst null. */
+export function readBaseCodeowners(repo, baseRef) {
     for (const p of CODEOWNERS_PATHS) {
-        try {
-            return git(repo, ["show", `${baseRef}:${p}`]);
-        }
-        catch {
-            /* Datei existiert in der Basis nicht -> naechste */
-        }
+        const c = readBaseFile(repo, baseRef, p);
+        if (c !== null)
+            return c;
     }
     return null;
 }

@@ -31,7 +31,7 @@ runs:
         BASE: ${{ github.event.pull_request.base.ref }}
       run: |
         set -o pipefail
-        DIFF=$(git diff --name-only "origin/$BASE"...HEAD | jq -R . | jq -s .)
+        DIFF=$(git diff --no-renames -z --name-only "origin/$BASE"...HEAD | jq -Rs 'split("\u0000") | map(select(length>0))')
         jq -n --argjson touched "$DIFF" '{touched:$touched, repo:"."}' \
           | node "$GITHUB_ACTION_PATH/../../../dist/cli/derive-tier.js" > tier.json
         cat tier.json
@@ -54,7 +54,7 @@ runs:
         set -o pipefail
         REVIEWS=$(gh api "repos/$REPO/pulls/$PR/reviews" \
           --jq '[.[] | {user: .user.login, state: .state, commit_id: .commit_id}]')
-        DIFF=$(git diff --name-only "origin/$BASE"...HEAD | jq -R . | jq -s .)
+        DIFF=$(git diff --no-renames -z --name-only "origin/$BASE"...HEAD | jq -Rs 'split("\u0000") | map(select(length>0))')
         jq -n \
           --argjson reviews "$REVIEWS" \
           --arg prAuthor "$AUTHOR" \

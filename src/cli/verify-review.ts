@@ -51,7 +51,7 @@ if (
 const repo = req.repo ?? ".";
 let globs: string[];
 try {
-  globs = specGlobs(repo);
+  globs = specGlobs(repo, req.baseRef);
 } catch (e) {
   fail(`spec-globs-invalid: ${(e as Error).message}`);
 }
