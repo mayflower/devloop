@@ -79,9 +79,28 @@ test("[REQ-TESTEXT-1] counter-probe: existing skipped t/f.test.mts with only .sk
 
 // ---- REQ-TESTEXT-2: not-too-wide (counter-probes; green against the old regex by construction) ----
 
-for (const f of ["t/g.mts", "t/h.test.xts", "t/i.test.json", "t/j.test.d.ts", "t/k.test-d.ts"]) {
+for (const f of ["t/g.mts", "t/h.test.xts", "t/i.test.json", "t/j.test.d.ts", "t/k.test-d.ts", "t/a.TEST.ts", "t/b.Test.TS"]) {
   test(`[REQ-TESTEXT-2] new active ${f} is NOT a test file (exit 0, not checked)`, () => {
     addCommit(f, ACTIVE);
+    const r = run();
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.ok).toBe(true);
+    expect(out.checked).toEqual([]);
+    expect(out.unmanaged).toEqual([]);
+    expect(out.violations).toEqual([]);
+  });
+}
+
+// Ordinary case: an EXISTING non-test file whose name merely ends in "test"/"spec" letters is changed.
+for (const f of ["t/latest.ts", "t/contest.js"]) {
+  test(`[REQ-TESTEXT-2] existing ${f} (no dot before 'test') changed by the PR is NOT a test file (exit 0, not checked)`, () => {
+    git("checkout", "-q", "main");
+    put(f, ACTIVE);
+    git("add", "-A");
+    commit(`base: ${f}`);
+    git("checkout", "-q", "-b", "devloop/impl-ordinary");
+    addCommit(f, ACTIVE + "// changed by the PR\n");
     const r = run();
     expect(r.status).toBe(0);
     const out = JSON.parse(r.stdout);
@@ -99,6 +118,7 @@ test("[REQ-TESTEXT-1] the seam's checked set equals the set vitest collects (vit
     "t/a.test.mts", "t/b.test.cts", "t/c.spec.mjs", "t/d.test.cjs", "t/e.test.mtsx", "t/f.test.mts",
     "t/g.mts", "t/h.test.xts", "t/i.test.json", "t/j.test.d.ts", "t/k.test-d.ts",
     "t/l.test.ts", "t/m.spec.jsx", "t/n.test.js",
+    "t/latest.ts", "t/contest.js", "t/o.TEST.ts", "t/p.Test.TS",
   ];
   put("package.json", '{"type":"module"}\n');
   git("add", "-A");
@@ -125,6 +145,8 @@ test("[REQ-TESTEXT-1] the seam's checked set equals the set vitest collects (vit
   expect(vitestSet).toContain("t/l.test.ts");
   expect(vitestSet).toContain("t/e.test.mtsx");
   expect(vitestSet).not.toContain("t/g.mts");
+  // vitest collects none of the near-miss names (no dot before test/spec; upper/mixed case)
+  for (const f of ["t/latest.ts", "t/contest.js", "t/o.TEST.ts", "t/p.Test.TS"]) expect(vitestSet).not.toContain(f);
 
   const r = run();
   const out = JSON.parse(r.stdout);
