@@ -3,7 +3,7 @@
 > devloop, Issue #12. Die Unskip-Naht (`verify-unskip`, §11 #3) prüft nur die Testdateien, die
 > `git diff --name-only` liefert. Drei Eigenschaften dieses Aufrufs lassen Änderungen an
 > verwalteten Tests ungeprüft durch. Gleiches Muster wie REQ-SPECGATE-9 (#4) für die Action.
-> Status: **Entwurf** (2026-11-25), wartet auf Abnahme.
+> Status: **abgenommen** (2026-11-25).
 
 ## Ist-Zustand (main, 33f31a1)
 
