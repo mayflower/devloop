@@ -59,3 +59,7 @@ test("unresolvable ref and missing blob throw, naming path and ref", () => {
   rmSync(join(repo, ".git/objects", sha.slice(0, 2), sha.slice(2)));
   expect(() => readTreeEntry(repo, "HEAD", "a.txt")).toThrow(/a\.txt @ HEAD/);
 });
+
+test("a pathspec that lists children (trailing slash) is not accepted as the entry of that path", () => {
+  expect(() => readTreeEntry(repo, "HEAD", "dir/")).toThrow(/exact path/);
+});
