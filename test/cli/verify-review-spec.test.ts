@@ -170,7 +170,7 @@ test("[REQ-SPECGATE-4] T0, Spec-Branch, gedeckt, Autor-Approval auf HEAD -> ok:f
   expect(r.out.ok).toBe(false);
 });
 
-test("[REQ-SPECGATE-4] T0, Spec-Branch, gedeckt, menschliche Approval auf HEAD -> ok:true (nicht pending)", () => {
+test("[REQ-SPECGATE-4] Gegenprobe: T0, Spec-Branch, gedeckt, menschliche Approval auf HEAD -> ok:true, nicht pending (kein pauschaler Block, kein ewiges pending)", () => {
   const repo = makeRepo({ CODEOWNERS: COVER_SPECS });
   const r = run(repo, { ...specBranch, reviews: [human] });
   expect(r.status).toBe(0);
