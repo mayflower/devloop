@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from "vitest";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, unlinkSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -358,4 +358,69 @@ test("[REQ-UNSKIPCONTENT-6] spec branch with big active file, symlink and gitlin
   const out = JSON.parse(r.stdout);
   expect(out.ok).toBe(true);
   expect(out.skipped).toMatch(/spec/i);
+});
+
+// ---------- REQ-7: paths the reader cannot resolve; pathspec-magic names; executable files ----------
+
+const lsFiles = (): string[] => git("ls-files", "-z").split("\0").filter(Boolean);
+
+test("[REQ-UNSKIPCONTENT-7] new file ':(top)evil.test.ts' with an ACTIVE test (default scope) is a violation", () => {
+  startPr();
+  put(":(top)evil.test.ts", ACTIVE);
+  git("add", "-A");
+  commit("implement: pathspec-magic file name");
+  expect(lsFiles()).toContain(":(top)evil.test.ts"); // committed literally, not interpreted
+  const r = run();
+  expect(r.status).toBe(1);
+  const out = JSON.parse(r.stdout);
+  expect(out.ok).toBe(false);
+  expect(files(out.violations)).toEqual([":(top)evil.test.ts"]);
+});
+
+test("[REQ-UNSKIPCONTENT-7] new file ':/evil.test.ts' (directory named ':') with an ACTIVE test is a violation", () => {
+  startPr();
+  put(":/evil.test.ts", ACTIVE);
+  git("add", "-A");
+  commit("implement: pathspec-magic via a directory named colon");
+  expect(lsFiles()).toContain(":/evil.test.ts");
+  const r = run();
+  expect(r.status).toBe(1);
+  expect(files(JSON.parse(r.stdout).violations)).toEqual([":/evil.test.ts"]);
+});
+
+test("[REQ-UNSKIPCONTENT-7] diff reports a path the reader finds in no ref (non-UTF-8 file name, built by plumbing): exit 1 naming the path", () => {
+  startPr();
+  // APFS refuses non-UTF-8 names in the worktree, so the entry is written straight into the index.
+  const oid = execFileSync("git", ["-C", repo, "hash-object", "-w", "--stdin"], { input: ACTIVE, encoding: "utf8" }).trim();
+  const entry = Buffer.concat([Buffer.from(`100644 ${oid}\t`), Buffer.from("test/ev"), Buffer.from([0xff]), Buffer.from("il.test.ts\0")]);
+  execFileSync("git", ["-C", repo, "update-index", "--add", "-z", "--index-info"], { input: entry });
+  commit("implement: non-UTF-8 test file name");
+  // Preconditions: the raw diff reports the path with the 0xFF byte; the blob is a plain regular file.
+  const raw = execFileSync("git", ["-C", repo, "diff", "--no-renames", "-z", "--name-only", "main...HEAD"]);
+  expect(raw.includes(Buffer.from([0x65, 0x76, 0xff, 0x69, 0x6c]))).toBe(true); // "ev" 0xFF "il"
+  expect(git("ls-tree", "HEAD", "test/").length).toBeGreaterThan(0);
+  const r = run();
+  expect(r.status).toBe(1);
+  const all = r.stdout + r.stderr;
+  expect(all).toContain("test/ev");
+  expect(all).toContain("il.test.ts");
+  expect(r.stdout).not.toMatch(/"ok":\s*true/);
+});
+
+test("[REQ-UNSKIPCONTENT-7] counter-probe: an executable (100755) managed test with only .skip removed passes and is checked", () => {
+  put("x.test.ts", SKIPPED);
+  chmodSync(join(repo, "x.test.ts"), 0o755);
+  git("add", "-A");
+  commit("base: executable test");
+  expect(modeOf("x.test.ts", "main")).toBe("100755");
+  startPr();
+  put("x.test.ts", SKIPPED.replaceAll("test.skip(", "test("));
+  git("add", "-A");
+  commit("implement: activate");
+  expect(modeOf("x.test.ts")).toBe("100755");
+  const r = run();
+  expect(r.status).toBe(0);
+  const out = JSON.parse(r.stdout);
+  expect(out.violations).toEqual([]);
+  expect(out.checked).toEqual(["x.test.ts"]);
 });
