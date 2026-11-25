@@ -2,7 +2,7 @@
 
 > devloop, Issues #19 und #20. Nach #12 kommen alle geänderten Testpfade an; geprüft wird aber
 > der Inhalt, den `git show` liefert. Zwei Wege lassen einen aktiven Test trotzdem durch.
-> Status: **Entwurf** (2026-11-25), wartet auf Abnahme.
+> Status: **abgenommen** (2026-11-25).
 
 ## Ist-Zustand (main, 86c0be9)
 
