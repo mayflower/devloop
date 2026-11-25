@@ -2,7 +2,7 @@
 
 > devloop, Issue #23. Die Unskip-Naht erkennt Testdateien an einer festen Endung, die enger ist als
 > das Default-Include von vitest. Dateien dazwischen führt vitest aus, die Naht prüft sie nicht.
-> Status: **Entwurf** (2026-11-25), wartet auf Abnahme.
+> Status: **abgenommen** (2026-11-25).
 
 ## Ist-Zustand (main, e565b3e — v0.10.2)
 
