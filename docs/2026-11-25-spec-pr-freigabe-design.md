@@ -4,7 +4,8 @@
 > CI-Anker (`verify-review`) tut das nicht. Ein Spec-PR mit Tier T0/T1 mergt ohne Review, sobald
 > das Ziel-Repo die Spec-Pfade nicht in CODEOWNERS führt (Befund two-dice/bsk, 2026-11-03, v0.8.1).
 > Status: **abgenommen** (2026-11-25); Nachtrag REQ-SPECGATE-5 (leeres Array ungültig) abgenommen 2026-11-25;
-> Nachtrag nach Critic-Runde 1 (REQ-SPECGATE-8/9, CODEOWNERS-Reihenfolge, Grenzen) abgenommen 2026-11-25.
+> Nachtrag nach Critic-Runde 1 (REQ-SPECGATE-8/9, CODEOWNERS-Reihenfolge, Grenzen) abgenommen 2026-11-25;
+> Nachtrag „Bekannte Grenzen“ nach Critic-Runde 2 (accepted) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 7e4d301)
 
@@ -151,7 +152,7 @@ in der PR-Beschreibung dokumentiert.
 - **Branch-Protection selbst** (Require Code Owner Review) kann devloop nicht prüfen — der Token
   hat dafür keine Rechte. Bleibt Setup-Pflicht wie bisher.
 - **`check-codeowners` liest weiter aus dem HEAD** (Ist-Punkt 6, gilt für T2/T3-Pfade). Gleiche
-  Lücke, eigener Fix; hier nur notiert, nicht Teil dieses Docs.
+  Lücke, eigener Fix (#14); hier nur notiert, nicht Teil dieses Docs.
 - **CODEOWNERS-Matching ist großzügig** (`codeownersCovers`, aus dem Drift-Wächter
   übernommen, im Zweifel „gedeckt"). Beispiel: `docs/specs/ @x` gilt hier auch für
   `vendor/docs/specs/…`, GitHub verankert ein Muster mit innerem `/` aber an der Wurzel. Greift
@@ -162,6 +163,18 @@ in der PR-Beschreibung dokumentiert.
   solche Zeilen. Ohne API-Rechte nicht prüfbar, gleiche Klasse wie Branch-Protection (F8).
 - **`.devloop/**` ist im Init-Skeleton nicht geschützt**, obwohl `init.ts` das im Kommentar
   behauptet. Für die Spec-Globs durch REQ-SPECGATE-8 entschärft; für andere `.devloop/`-Dateien
-  eigener Fix (eigenes Issue), hier nicht Teil des Docs.
+  eigener Fix (#13), hier nicht Teil des Docs.
+- **Pfade mit Zeilenende im Verzeichnisnamen** (`\n`, `\r`, U+2028) entgehen jedem Glob, weil
+  `glob.ts` ohne `s`-Flag baut; eine Spec darunter wird nicht erkannt. Nur per absichtlich
+  gewähltem Slug erreichbar, die Kette erzeugt so etwas nicht (Critic-Runde 2, F1; #15).
+- **Basiswechsel eines PRs** löst den Check nicht neu aus (`edited` fehlt im Template). Das
+  Urteil hängt aber an der Basis. Auf GitHub nicht verifiziert, betrifft auch Gate-Tamper,
+  bestand schon vorher (Critic-Runde 2, F2; #16).
+- **Verzeichnismuster ohne Slash am Ende** (`/specs @x`) gelten hier als ungedeckt, obwohl
+  GitHub sie schützt. Falsch rot, also sichere Richtung; mit einem Zeichen in CODEOWNERS
+  behebbar (Critic-Runde 2, F3).
+- **Der Action-Test hat einen lokalen `main`**, ein echter Runner nicht. Eine Mutation
+  `baseRef` ohne `origin/` bleibt deshalb unentdeckt; der Code ist korrekt (Critic-Runde 2, F4; #17).
+- **`verify-unskip` hat dieselbe Rename-/Quoting-Lücke** wie vor REQ-SPECGATE-9 die Action (#12).
 - Fällt Issue #11 (Spec-Kritiker statt Menschen-Stopp) positiv aus, ist dieses Design neu zu
   bewerten.
