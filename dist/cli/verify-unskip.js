@@ -26,7 +26,10 @@ if (isSpecBranch(headBranch)) {
     process.stdout.write(JSON.stringify({ ok: true, skipped: "spec-PR (devloop/spec/*)" }) + "\n");
     process.exit(0);
 }
-const TEST_FILE = /\.(test|spec)\.[jt]sx?$/;
+// What counts as a test file: vitest's DEFAULT include (**/*.{test,spec}.?(c|m)[jt]s?(x)).
+// Limit: a project with its own `include`, or another runner, can run files this does not name
+// (see #21).
+const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 // The glob list is read from the BASE ref first: the scope that is already on the protected
 // branch decides, so a PR cannot loosen the seam for itself. Only if the file does not exist on
 // base do we fall back to the checkout (a repo adopting the file — that PR necessarily touches
