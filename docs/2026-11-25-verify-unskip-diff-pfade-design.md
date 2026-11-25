@@ -3,7 +3,7 @@
 > devloop, Issue #12. Die Unskip-Naht (`verify-unskip`, §11 #3) prüft nur die Testdateien, die
 > `git diff --name-only` liefert. Drei Eigenschaften dieses Aufrufs lassen Änderungen an
 > verwalteten Tests ungeprüft durch. Gleiches Muster wie REQ-SPECGATE-9 (#4) für die Action.
-> Status: **abgenommen** (2026-11-25).
+> Status: **abgenommen** (2026-11-25); Nachtrag „Bekannte Grenzen“ nach Critic-Runde 1 (accepted) abgenommen 2026-11-25.
 
 ## Ist-Zustand (main, 33f31a1)
 
@@ -64,3 +64,11 @@ im Test-Repo ausdrücklich `true` (damit das Quoting auf jeder Maschine greift):
 - **Zeilenenden im Pfad** und Glob-Matching für `managed-tests.json`: hängt an #15 (`s`-Flag).
 - **Der Name `TEST_FILE`-Regex** bestimmt weiter, was eine Testdatei ist. Eine verwaltete Datei,
   die zu einem Nicht-Testnamen umbenannt wird, fällt über den **alten** Pfad auf (REQ-1).
+- **REQ-UNSKIPDIFF-3 wirkt in der Action doppelt:** Der Tier-Schritt führt denselben Diff vorher
+  unter `bash -e`/`pipefail` aus und wird bei gescheitertem Fetch schon dort rot. REQ-3 bleibt
+  als Härtung der CLI im Einzelaufruf (Critic-Runde 1, F4).
+- **Der Detektor „Meldung nennt die Basis"** ist schwach: Er bleibt grün, solange das Git-stderr
+  die Basis nennt (Critic-Runde 1, F5).
+- **Inhalte, nicht Pfade — außerhalb dieses Docs, bestanden schon vorher** (Critic-Runde 1):
+  Testdatei über 1 MiB (`git show` ohne `maxBuffer`, Fehler → `""`, #19); neue Testdatei als
+  Symlink (#20); `hasActiveTest` per Import-Alias umgehbar (#21).
