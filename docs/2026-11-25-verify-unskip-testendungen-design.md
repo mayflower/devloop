@@ -20,7 +20,7 @@
   `?(c|m)[jt]s?(x)` endet — genau die Menge des vitest-Default-Includes. Regex-Form:
   `/\.(test|spec)\.[cm]?[jt]sx?$/`.
 - **REQ-TESTEXT-2** *(ubiquitous)* — Pfade, die das vitest-Default-Include nicht trifft, bleiben
-  keine Testdateien (z. B. `foo.mts`, `foo.test.json`, `foo.test.d.ts`… nach Regex-Form,
+  keine Testdateien (z. B. `foo.mts`, `foo.test.json`, `foo.test.d.ts`,
   `foo.test-d.ts`). Alles andere an der Naht bleibt unverändert.
 
 ## Detektoren (Wirkung) und Mutationsproben
