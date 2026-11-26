@@ -47,3 +47,10 @@ im PR dokumentiert.
   sammeln — gehört zu #21.
 - **Groß/Klein-Schreibung der Endung** (`.TEST.TS`): vitest-Globs sind auf Linux
   case-sensitiv, der Regex ebenso. Auf case-insensitiven Dateisystemen nicht betrachtet.
+- **Default-Exclude von vitest wird nicht nachgebildet** (`node_modules/`, `dist/`, `cypress/`,
+  `.{idea,git,cache,output,temp}/`, `*.config.*`). Testnamen in diesen Ordnern prüft die Naht,
+  obwohl vitest sie nicht ausführt. Das ist eine Überprüfung, kein Durchlass. Derselbe Fehlalarm
+  bestand schon für `.js`/`.ts` und trifft jetzt auch `.mjs`/`.cjs`/`.mts`/`.cts`. Er betrifft nur
+  Repos, die solche Dateien committen (Critic zu #23, F1).
+- **Verzeichnis-Symlinks**, denen vitest folgt, sieht die Naht nicht. Das bestand schon vorher
+  und liegt außerhalb von REQ-TESTEXT → #25.
