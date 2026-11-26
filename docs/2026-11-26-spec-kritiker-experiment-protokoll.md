@@ -163,6 +163,62 @@ Protokoll, sobald die Rückkanten gesichtet sind.
 - **Einordnung durch mich:** Die W/M-Einordnung schreibe ich selbst. Deine Abnahme der Liste ist
   die Gegenprobe.
 
+## Ergebnis (2026-11-26)
+
+35 Läufe (29 Mutanten, 6 Kontrollen), frisches Opus je Lauf, blind, nur lesend. Kein technischer
+Abbruch, keine Wiederholung. Gegenüber Anhang A kamen nur zwei technische Dinge dazu: ein Satz
+vorweg, der das Lesen auf das eigene Variantenverzeichnis beschränkt, und die Ausgabe über ein
+Schema mit denselben Feldern statt als freier JSON-Text.
+
+| Messgröße | Ergebnis | Schwelle | erfüllt |
+|---|---|---|---|
+| Tötungsrate W | 4 / 15 (27 %) | ≥ 80 % (12 / 15) | nein |
+| Kontrollen mit `blocker` | 6 / 6 (11 Blocker) | ≤ 1 / 6 Fehlalarm | nicht beurteilt, für die Entscheidung unerheblich |
+| M nach Regel | 1 / 14 | – | – |
+
+**Entscheidung nach Protokoll: Der Eingangs-Stopp bleibt.**
+
+### W-Mutanten im Einzelnen
+
+| Spec | Op | Ziel | Befund am Ziel |
+|---|---|---|---|
+| m1 | O1 | CORE-25 | `blocker` (nicht_verlangt): getötet |
+| m1 | O4 | SCHEMA-3 | `hinweis` (offene_auslegung) |
+| m1 | O5 | CORE-32 | `hinweis` (nicht_verlangt) |
+| m2 | O1 | EDIT-9 | keiner |
+| m2 | O2 | STAT-2 | `blocker` (widerspruch): getötet |
+| m2 | O5 | EDIT-21 | `hinweis` (nicht_verlangt) |
+| m3a | O4 | BUI-5 | `hinweis` (offene_auslegung) |
+| m3a | O5 | BARCH-5 | keiner |
+| m3b | O4 | SYNC-8 | `blocker` (widerspruch): getötet |
+| m3b | O5 | SRV-7 | `hinweis` (nicht_verlangt) |
+| gerade-100 | O2 | CAT-5 | `hinweis` (widerspruch) |
+| gerade-100 | O5 | G100-11 | `blocker` (widerspruch): getötet |
+| plan | O3 | LBL-4 gestrichen | `hinweis` (offene_auslegung, Querung) |
+| plan | O4 | LBL-5 | keiner zur Mutation; der `blocker` an LBL-5 betrifft das Lesen und kommt auch in unveränderten Varianten |
+| plan | O5 | LBL-11 | `hinweis` (nicht_verlangt) |
+
+### Beobachtungen
+
+- **Gesehen, aber zu schwach eingestuft.** In 8 der 11 nicht getöteten W-Mutanten beschreibt der
+  Kritiker die Mutation am Ziel-REQ zutreffend, stuft sie aber als `hinweis` ein. Mit jeder
+  Schwere wären es 12 / 15. Diese Zählung ist nachträglich und trägt keine Entscheidung: Jeder
+  Lauf liefert 4–10 Hinweise, und auf Hinweis-Ebene trennt der Kritiker schlecht (die 256-KiB-Grenze
+  des Mutanten bemängelt er genauso wie die 1-MiB-Grenze des Originals).
+- **Die O5-Ergänzung in Anhang A hat nicht gewirkt.** 5 der 6 hinzugefügten REQs blieben `hinweis`.
+  Getötet wurde nur gerade-100 O5, und zwar als `widerspruch`, weil der Zusatz zugleich sachlich
+  falsch war.
+- **Kontroll-Blocker sind stabil.** Jeder der 11 Blocker in den Kontrollen taucht in den
+  Mutanten-Läufen derselben Spec wieder auf. Ob es echte Mängel der abgenommenen
+  carrera-planer-Specs sind, ist nicht beurteilt.
+
+### Folgen
+
+- Die zweite Messung (Rückkanten) wird nicht gefahren. Sie hätte nur einen Erfolg der ersten
+  Messung absichern sollen.
+- Kandidat für ein eigenes Folgeexperiment: ein Kritiker mit anderer Schwere-Kalibrierung, geprüft an
+  **frischen** Mutanten. Die 29 Mutanten hier sind für die Kalibrierung verbraucht.
+
 ## Anhang A: Kritiker-Prompt (eingefroren vor dem ersten Lauf)
 
 Platzhalter: `<SPEC>` ist der Pfad der Spec-Variante. `<GRUNDLAGE>` ist das Verzeichnis mit der
