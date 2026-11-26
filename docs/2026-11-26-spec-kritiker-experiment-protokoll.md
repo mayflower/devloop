@@ -162,3 +162,95 @@ Protokoll, sobald die Rückkanten gesichtet sind.
   Gespräch → Issue. Den sieht dieses Experiment nicht, siehe „Herkunft der Anforderung“ in #11.
 - **Einordnung durch mich:** Die W/M-Einordnung schreibe ich selbst. Deine Abnahme der Liste ist
   die Gegenprobe.
+
+## Anhang A: Kritiker-Prompt (eingefroren vor dem ersten Lauf)
+
+Platzhalter: `<SPEC>` ist der Pfad der Spec-Variante. `<GRUNDLAGE>` ist das Verzeichnis mit der
+Grundlage. Die Varianten liegen unter neutralen Namen (`spec.md` in einem zufällig benannten
+Verzeichnis), sodass der Pfad nichts über Mutant oder Kontrolle verrät.
+
+```text
+Du prüfst eine Spec, bevor auf ihrer Basis Tests und Code entstehen. Niemand hat sie vor dir
+gelesen. Was du nicht findest, wird gebaut.
+
+Spec: <SPEC>
+Grundlage (alles, woraus die Spec abgeleitet sein muss): <GRUNDLAGE>/
+
+Frage: Setzt die Spec ihre Grundlage richtig und vollständig um, und verlangt sie nichts, was die
+Grundlage nicht trägt?
+
+Lies die Grundlage vollständig und dann die Spec vollständig. Prüfe jedes Akzeptanzkriterium
+(REQ) gegen die Grundlage. Prüfe umgekehrt jede Aussage der Grundlage, die in den Umfang der
+Spec fällt, auf Abdeckung durch ein REQ.
+
+Melde jeden Befund mit einer dieser Kategorien:
+- widerspruch: Das REQ sagt etwas anderes als die Grundlage (Bedingung, Wert, Verhalten).
+- luecke: Die Grundlage verlangt etwas im Umfang der Spec, das kein REQ abdeckt.
+- nicht_verlangt: Das REQ fordert etwas, das die Grundlage weder verlangt noch nahelegt, und die
+  Spec begründet es nicht als Entscheidung.
+- offene_auslegung: Die Grundlage lässt mehrere Lesarten zu, und die Spec legt sich auf eine fest,
+  ohne das als Entscheidung auszuweisen.
+
+Schwere:
+- blocker: Würde so gebaut etwas anderes ergeben, als die Grundlage verlangt, oder etwas
+  Verlangtes fehlt, oder es würde etwas gebaut, das die Grundlage nicht trägt und die Spec nicht
+  als Entscheidung begründet.
+- hinweis: Alles andere.
+
+Jeder Befund braucht ein wörtliches Zitat aus der Grundlage mit Datei und, wo möglich, Zeile. Bei
+nicht_verlangt zitierst du die Grundlagenstelle, die den Umfang festlegt, über den das REQ
+hinausgeht. Ohne Zitat kein blocker. Entscheidungen, die die Spec selbst ausdrücklich als vom Menschen getroffen
+oder abgenommen ausweist, sind keine Befunde, solange sie der Grundlage nicht widersprechen.
+Stil, Formulierung und Testbarkeit sind nicht Gegenstand.
+
+Antworte ausschließlich mit JSON:
+{"findings":[{"req":"REQ-… oder Abschnitt","kategorie":"widerspruch|luecke|nicht_verlangt|offene_auslegung","schwere":"blocker|hinweis","beleg":"Datei:Zeile — Zitat","begruendung":"…"}]}
+Keine Befunde: {"findings":[]}
+```
+
+## Anhang B: Mutantenliste mit Einordnung (eingefroren nach Abnahme)
+
+- **Material:** Die Erstfassungen liegen bei `TMogdans/carrera-planer`. Die Grundlage stammt
+  jeweils aus dem Stand des Spec-Commits. Bei M1 hat dieser Commit `KONZEPT.md` und
+  `docs/recherche.md` mitgeändert, mit den Abschnitten „Kreuzung (Acht)“ und „Raster“.
+- **Auswahl:** `auswahl.py`, deterministisch. Formuliert hat Sonnet, ein Lauf je Spec.
+- **gerade-100 O4 entfällt:** Der einzige Kandidat hat kein Fehlerverhalten. Damit bleiben
+  29 Mutanten.
+
+| Spec | Op | REQ | Mutation | Einordnung | Beleg |
+|---|---|---|---|---|---|
+| m1 | O1 | CORE-25 | zusätzlicher Fehler „ungültiger Verweis“, wenn zwischen verwiesener Kreuzung und Querung eine weitere Kreuzung liegt | **W** | KONZEPT:39–41 „auf eine frühere Kreuzung verweist … Fehler sind: Verweis auf keine Kreuzung, zweite Querung derselben Kreuzung, ungenaue Ankunft“ |
+| m1 | O2 | CORE-30 | Acht mit 2 × Gerade 114 statt Gerade 114 + Anschlussstück | M | Grundlage schreibt das Acht-Beispiel nicht vor; Bestand (recherche:57–69) hat nur 1 × Gerade 114, der Bezug „aus dem Bestand“ steht nur in der Spec |
+| m1 | O3 | CORE-8 gestrichen | Invarianz der Spur unter Verschiebung/Drehung | M | KONZEPT:98 „verschoben oder gedreht bleibt geschlossen“ bleibt durch CORE-12/Acht („aus beliebiger Startpose“) teilweise abgedeckt |
+| m1 | O4 | SCHEMA-3 | unbekannte Zusatzfelder werden still verworfen statt abgewiesen | **W** | KONZEPT:85 „alte Layouts scheitern laut statt still“; constitution:19 |
+| m1 | O5 | CORE-32 neu | Kern liefert Gesamtdrehung als Stufenzahl | **W** | nicht verlangt |
+| m2 | O1 | EDIT-9 | Querung anhängbar bei exakter Position, Richtung egal | **W** | M1 REQ-CORE-24 „exakt — Position und Richtung“; KONZEPT:40 |
+| m2 | O2 | STAT-2 | Lücke in cm statt mm | **W** | KONZEPT:58 „Versatz in mm und Winkel“ |
+| m2 | O3 | EDIT-19 gestrichen | Zeichengeometrie (y-Spiegelung, Mittellinie, Band) | M | KONZEPT:88 „Darstellung in SVG“; Zeichnen bleibt über REQ-UI-3 verlangt, die Lücke liegt im Detail |
+| m2 | O4 | STORE-6 | Layout mit Kern-Fehlern wird beim Laden abgelehnt statt geladen | M | KONZEPT:131 „Fehler sind dort sichtbar“, M1 REQ-CORE-19 Fehler als Rückgabewerte; Laden fehlerhafter Layouts nicht ausdrücklich verlangt |
+| m2 | O5 | EDIT-21 neu | Verlauf liefert deutsche Kurzbeschreibungen | **W** | nicht verlangt |
+| m3a | O1 | BEST-5 | kaputter Bestand nur bei Schemafehler, „kein JSON“ fällt heraus | M | nur per Analogie zu M2 REQ-STORE-5; KONZEPT:85 allgemein |
+| m3a | O2 | BEST-1 | `schemaVersion` 2 statt 1 | M | Version des Bestandsschemas steht nicht in der Grundlage (Analogie M2) |
+| m3a | O3 | BEST-4 gestrichen | Roundtrip-Eigenschaft Sichern/Laden | M | Speichern bleibt verlangt (übrige BEST-REQs); Roundtrip nur per Analogie M2 REQ-STORE-4 |
+| m3a | O4 | BUI-5 | Meldungen verschwinden von selbst statt bis zum Schließen zu bleiben | **W** | M2-Spec:382–385 „bleiben stehen, bis der Mensch sie schließt“ |
+| m3a | O5 | BARCH-5 neu | keine neue Laufzeitabhängigkeit, `dependencies` unverändert | **W** | nicht verlangt |
+| m3b | O1 | SYNC-5 | bei 409 und gleichem Inhalt kein Hinweis, Basis still auf Version m | M | KONZEPT:100–101 verbietet stilles Überschreiben; bei gleichem Inhalt wird nichts überschrieben |
+| m3b | O2 | API-13 | Größengrenze 256 KiB statt 1 MiB | M | Grenze steht nicht in der Grundlage |
+| m3b | O3 | SYNC-1 gestrichen | Dialog zeigt die Server-Layouts | M | KONZEPT:119 „Layouts geräteübergreifend“; Laden eines Server-Layouts bleibt verlangt, nur die Liste fehlt |
+| m3b | O4 | SYNC-8 | Bestand-Konflikt (409) wird ohne Meldung übernommen | **W** | KONZEPT:100–101 „bekommt einen Hinweis statt still überschrieben zu werden“ |
+| m3b | O5 | SRV-7 neu | Zugriffslog je `/api`-Anfrage auf stdout | **W** | nicht verlangt |
+| gerade-100 | O1 | EINK-3 | Vorlagen-Hinweis nur für Vorlagen ohne Teile mit eigener Artikelnummer | M | Issue #34 fragt offen „wie zeigt die Einkaufsliste das?“ |
+| gerade-100 | O2 | CAT-5 | Querweg „kürzer als“ statt „höchstens so lang wie“ der Längsweg | **W** | M1 REQ-CAT-5 (m1-Spec:286–289) „höchstens so lang wie der Längsweg“ |
+| gerade-100 | O3 | G100-9 gestrichen | Mutations-Ratchet für `src/catalog`/`src/web/editor` | M | constitution:26 gilt ohnehin global; Lücke in der Spec ändert das Gebaute nicht zwingend |
+| gerade-100 | O5 | G100-11 neu | Sammelhinweis „nur gemeinsam in Packung 20061658“ über der Einkaufsliste | **W** | nicht verlangt |
+| plan | O1 | LBL-1 | Kurzform nur für Geraden, nicht für Kurven | M | Issue #35 fragt offen „Kurzform: vollen Namen oder Kürzel?“ |
+| plan | O2 | LBL-2 | Platzregel `<` statt `≤` | M | Issue #35 fragt offen „ab welcher Zoomstufe“ |
+| plan | O3 | LBL-4 gestrichen | keine Beschriftung für Querung, nicht gezeichnete Elemente, Baugruppen | **W** | Issue #35:15 „Baugruppen ohne Maße … haben also auch keine Beschriftung“ |
+| plan | O4 | LBL-5 | ungültiger Schalterwert fällt still auf „an“ zurück | **W** | Issue #35:7 „wie der Modus-Schalter“; M3a REQ-MODUS-1 „bei ungültigem Wert eine Meldung“ |
+| plan | O5 | LBL-11 neu | Logik liefert Anzahl je Beschriftungsvariante | **W** | nicht verlangt |
+
+Summe: **15 W**, **14 M**. 80 % von 15 sind **12** getötete W-Mutanten.
+
+**Einordnungsregel:** Im Zweifel M. Eine Analogie zu einer früheren Spec oder eine offene Frage im
+Issue ergibt M. W gibt es nur bei einer zitierbaren Stelle, der die Mutation direkt widerspricht,
+oder bei O5, wenn die Grundlage das Hinzugefügte nicht trägt.
