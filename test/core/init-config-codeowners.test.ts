@@ -53,3 +53,23 @@ test("[REQ-CFGBASE-8] init mit CODEOWNERS ohne Deckung der tier-map unter tools/
   const r = initRepo(repo, TEMPLATE);
   expect(r.notes.some((n) => /CODEOWNERS/.test(n) && /tools\/tier-map\.json/.test(n))).toBe(true);
 });
+
+// Schraegstrich am Ende (Tab-Vervollstaendigung): kein absoluter Pfad in der CODEOWNERS.
+test("[REQ-CFGBASE-8] init mit Schraegstrich am Ende, ohne tier-map: keine Zeile mit absolutem Pfad", () => {
+  initRepo(repo + "/", TEMPLATE);
+  const text = readFileSync(join(repo, ".github/CODEOWNERS"), "utf8");
+  expect(text).not.toContain(repo);
+  expect(text).not.toMatch(/^\/\//m);
+  expect(lines(text)).toContain("/.devloop/ @OWNER");
+});
+
+test("[REQ-CFGBASE-8] init mit Schraegstrich am Ende, tier-map unter tools/: /tools/tier-map.json @OWNER, kein absoluter Pfad", () => {
+  mkdirSync(join(repo, "tools"), { recursive: true });
+  writeFileSync(join(repo, "tools/tier-map.json"), JSON.stringify({ T3: ["services/**"], T1: ["**"] }));
+  const r = initRepo(repo + "/", TEMPLATE);
+  const text = readFileSync(join(repo, ".github/CODEOWNERS"), "utf8");
+  expect(text).not.toContain(repo);
+  expect(text).not.toMatch(/^\/\//m);
+  expect(lines(text)).toContain("/tools/tier-map.json @OWNER");
+  expect(r.notes.join("\n")).not.toContain(repo);
+});
