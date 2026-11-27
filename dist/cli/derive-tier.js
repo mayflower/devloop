@@ -9,8 +9,7 @@
 // Always plain node (sandbox-clean) — never a repo's tsx-based `pnpm run tier`.
 import { readFileSync } from "node:fs";
 import { deriveTier } from "../core/tier.js";
-import { resolveTierMapPath, TIER_MAP_CANDIDATES } from "../core/tier-map.js";
-import { readTreeEntry } from "../core/tree-entry.js";
+import { readBaseTierMap, resolveTierMapPath } from "../core/tier-map.js";
 import { readStdin } from "./_stdin.js";
 const req = JSON.parse(await readStdin());
 let tierMap = req.tierMap;
@@ -23,16 +22,11 @@ if (!tierMap) {
     let fromBase = false;
     if (req.baseRef) {
         try {
-            for (const cand of TIER_MAP_CANDIDATES) {
-                const entry = readTreeEntry(req.repo, req.baseRef, cand);
-                if (entry.kind === "missing")
-                    continue;
-                if (entry.kind !== "file")
-                    throw new Error(`${cand} ist in der Basis kein regulaeres Blob (${entry.kind})`);
-                tierMap = JSON.parse(entry.content);
-                tierMapPath = `${req.baseRef}:${cand}`;
+            const base = readBaseTierMap(req.repo, req.baseRef);
+            if (base) {
+                tierMap = base.map;
+                tierMapPath = base.path;
                 fromBase = true;
-                break;
             }
         }
         catch (e) {

@@ -84,6 +84,16 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
    > Approval-Gültigkeit immer), erzwingt das „muss approved sein" aber **nicht** selbst — das tut CODEOWNERS.
    > **Erzwungen** wird die Alignment-Pflicht vom **Drift-Wächter** `check-codeowners` (Required Check, im
    > CI-Template): er failt, wenn ein T2/T3-tier-map-Pfad nicht von CODEOWNERS gedeckt ist (oder CODEOWNERS fehlt).
+   >
+   > **Zwei Prüfungen (seit v0.13.0):** (A) Der Drift-Wächter `check-codeowners` prüft tier-map und CODEOWNERS des
+   > **PR-HEAD** und schützt `main` vor einer Lücke nach dem Merge. (B) `verify-review` prüft die **Wirksamkeit gegen die
+   > Basis**: Berührt der Diff einen Pfad, dessen Tier nach der **Basis**-tier-map T2/T3 ist (ungematchte Pfade zählen mit dem
+   > Default der Map), muss die **Basis**-CODEOWNERS genau diesen Pfad decken (fehlt sie, ist nichts gedeckt), sonst
+   > `ok:false` mit `codeowners-unguarded` und den ungedeckten Pfaden, nie `pending`. Ein PR, der sich die Deckung selbst in
+   > CODEOWNERS einträgt, besteht (B) nicht, weil GitHub das Owner-Review nach der Basis-CODEOWNERS verlangt.
+   > Reihenfolge: Tamper, Spec-Gate, Config-Gate, CODEOWNERS-Gate, Tier/Approval. Ausgenommen: Erstaufnahme, Basis ohne
+   > tier-map, lokaler Aufruf ohne `baseRef`. Ein PR, der nur T0/T1-Pfade ändert (z.B. nur CODEOWNERS), bleibt frei, so
+   > repariert man eine Lücke. **Nach dem Update auf v0.13.0** sind T2/T3-PRs rot, deren Pfade die Basis-CODEOWNERS nicht decken.
 6. **Trace-/Coverage-Gate muss `.skip`'te Tests als Abdeckung zählen** (Regex über Quelltext).
    Davon hängt ab, dass der Spec-PR `main` grün hält. Wer das weghärtet, bricht das Spec-PR-Modell still.
 7. Sicherstellen, dass die **anderen drei Wächter** stehen: Mutation-Ratchet (Stryker),
