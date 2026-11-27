@@ -63,6 +63,18 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      ungültige (Bot, Autor, veraltet) → `ok:false`. Ein `devloop/spec/*`-PR ohne erkennbaren Spec-Pfad
      (z.B. nur Tests) schlägt ebenfalls mit `spec-unguarded` fehl. **Bestehende Ziel-Repos ohne
      Spec-Deckung werden bei Spec-PRs rot** — vor dem Upgrade CODEOWNERS ergänzen;
+   - **`/.devloop/`** (und eine tier-map außerhalb davon, z.B. `/tools/tier-map.json`) → Config-Änderungen
+     brauchen ein Review. **Pflicht seit v0.11.0 und wird erzwungen:** Die Precondition-Action liest
+     `tier-map.json`, `protected-globs.json` und `bot-logins.json` aus der **Basis** (`origin/<base>`, per `git show`),
+     nie aus dem PR-HEAD; ein PR kann sich die Regeln, nach denen er geprüft wird, nicht selbst setzen. Fehlt eine
+     Datei in der Basis, gilt sie aus dem HEAD (Arbeitsbaum), dann stdin, sonst `config-missing`; ist die Basis-Datei
+     unlesbar (kein JSON, kein String-Array, kein reguläres Blob), schlägt der Check mit `config-invalid` fehl (kein
+     Rückfall). Config-Pfade sind `.devloop/**`, `tools/tier-map.json`, `tier-map.json`. Ein PR, der einen davon
+     ändert (hinzufügt, ändert, löscht), umgeht die T0/T1-Abkürzung nicht: Sind die Pfade nicht von der
+     **CODEOWNERS der Basis** gedeckt, `ok:false` mit `config-unguarded`; sonst gilt die Approval-Bewertung wie ab T2.
+     Ausgenommen ist die **Erstaufnahme** (die Basis enthält keinen Config-Pfad, der PR richtet devloop ein).
+     **Nach dem Update auf v0.11.0 ist die erste Config-Änderung rot**, bis `/.devloop/ @OWNER` in der CODEOWNERS
+     der Basis steht; `/devloop:init` legt die Zeile an bzw. meldet die Lücke in `notes`;
    - **alle T2/T3-Pfade aus deiner `tier-map`** (auth, migrations, contracts, `src/**`, …).
    So funktioniert §9 serverseitig: **T0/T1 berührt keine CODEOWNER-Pfade → kein Review nötig → Auto-Merge;
    T2/T3 berührt CODEOWNER-Pfade → required Review.** `verify-review` failt **nicht** auf „noch nicht

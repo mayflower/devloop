@@ -7,7 +7,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { resolveTierMapPath } from "./tier-map.js";
 import { tierGlobs } from "./tier.js";
-import { parseCodeowners, findUncoveredTierGlobs } from "./codeowners.js";
+import { parseCodeowners, findUncoveredTierGlobs, codeownersCovers } from "./codeowners.js";
+import { uncoveredSpecPaths } from "./spec-change.js";
 // Convert a tier glob to a CODEOWNERS path: `services/**` -> `/services/` (anchored dir),
 // `**/auth/**` -> `auth/` (matches anywhere). A skeleton line for the human to assign owners.
 function tierGlobToCodeownersPath(glob) {
@@ -16,13 +17,19 @@ function tierGlobToCodeownersPath(glob) {
     }
     return "/" + glob.replace(/\/\*\*$/, "/").replace(/\*\*$/, "").replace(/\*$/, "");
 }
+// tier-map outside `.devloop/` (tools/ or root) as CODEOWNERS paths, else null.
+function tierMapOutsideDevloop(repo, tierMapPath) {
+    const rel = tierMapPath.replace(repo + "/", "");
+    return rel.startsWith(".devloop/") ? null : ["/" + rel];
+}
 // Project-agnostic skeletons — the adopter tunes them in their constitution/CI.
 const PROTECTED_GLOBS_SKELETON = JSON.stringify(["**/stryker.conf.*", "**/.semgrep/**", "**/constitution.md", "**/CODEOWNERS", "**/*.eslintrc*"], null, 2);
 // Which test paths the unskip seam (§11) binds. The skeleton is the FAIL-CLOSED default —
 // `**` = every test file, i.e. exactly the pre-v0.8.1 behaviour. Narrow it to the paths
 // spec-to-tests actually authors (the caged services / twin areas), otherwise a plain PR that
-// adds an ordinary active test file cannot pass the guard. Lives in `.devloop/` = the protected
-// set, so an agent cannot widen it to smuggle its own tests past the seam.
+// adds an ordinary active test file cannot pass the guard. verify-unskip reads it from the BASE;
+// a PR that changes `.devloop/**` is a config change and needs a CODEOWNERS review (#13), so an
+// agent cannot widen it to smuggle its own tests past the seam.
 const MANAGED_TESTS_SKELETON = JSON.stringify({
     _comment: "Globs of the DEVLOOP-MANAGED test files (written by spec-to-tests, only un-skippable by implement). " +
         "Narrow these to your caged areas; ordinary tests outside them are not bound by the unskip seam. " +
@@ -109,14 +116,28 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
         const coRel = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"].find((r) => existsSync(join(targetRepo, r)));
         if (!coRel) {
             const owners = [...new Set(t2t3.map(tierGlobToCodeownersPath))].map((p) => `${p} @OWNER`);
+            // Config-Pfade (#13): /.devloop/ plus a tier-map outside it, so a config change needs a review.
+            const cfg = ["/.devloop/", ...(tierMapOutsideDevloop(targetRepo, tierMapPath) ?? [])].map((p) => `${p} @OWNER`);
             write(".github/CODEOWNERS", "# devloop: T2/T3 tier paths require a human CODEOWNER review (the §9 merge gate).\n" +
-                "# Replace @OWNER with the real owner(s). Keep your protected set (gate configs) covered too.\n" +
-                owners.join("\n") +
+                "# Replace @OWNER with the real owner(s). /.devloop/ must stay covered: verify-review requires\n" +
+                "# a review for config changes, read against the BASE CODEOWNERS (else `config-unguarded`).\n" +
+                [...cfg, ...owners].join("\n") +
                 "\n");
         }
         else {
             result.skipped.push(coRel);
-            const uncovered = findUncoveredTierGlobs(t2t3, parseCodeowners(readFileSync(join(targetRepo, coRel), "utf8")));
+            const patterns = parseCodeowners(readFileSync(join(targetRepo, coRel), "utf8"));
+            const outside = (tierMapOutsideDevloop(targetRepo, tierMapPath) ?? []).map((p) => p.slice(1));
+            const uncoveredCfg = [
+                ...(patterns.some((pat) => codeownersCovers(".devloop/config.json", pat)) ? [] : [".devloop/"]),
+                ...uncoveredSpecPaths(outside, patterns),
+            ];
+            if (uncoveredCfg.length > 0) {
+                result.notes.push(`CODEOWNERS (${coRel}) does not cover these devloop config paths: ${uncoveredCfg.join(", ")} — add ` +
+                    `owner lines (e.g. "/.devloop/ @OWNER"). Without them, every change to .devloop/** or the ` +
+                    `tier-map fails verify-review with config-unguarded.`);
+            }
+            const uncovered = findUncoveredTierGlobs(t2t3, patterns);
             if (uncovered.length > 0) {
                 result.notes.push(`CODEOWNERS (${coRel}) does not cover these T2/T3 tier paths — add owner lines, else such ` +
                     `a PR could auto-merge unreviewed: ${uncovered.join(", ")}`);

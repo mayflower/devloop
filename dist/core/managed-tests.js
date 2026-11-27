@@ -8,10 +8,11 @@
 //
 // The distinction comes from a CONFIG FILE IN THE TARGET REPO — `.devloop/managed-tests.json`,
 // a glob list — deliberately NOT from the branch name: an agent picks its own branch name, so a
-// branch-coupled exemption is self-serve. `.devloop/**` is part of the protected set
-// (protected-globs.json), so an agent cannot widen the exemption list to smuggle its own tests
-// past the seam — `verify-review` fails a diff that touches the protected set, unconditionally
-// and independent of tier, BEFORE the unskip step ever runs.
+// branch-coupled exemption is self-serve. verify-unskip reads the file from the BASE first, and a
+// PR that changes `.devloop/**` is a config change: `verify-review` skips the T0/T1 shortcut and
+// requires that the BASE CODEOWNERS cover `.devloop/` (else `config-unguarded`), so GitHub demands a
+// human review (#13). An agent therefore cannot widen the exemption list on its own to smuggle
+// its own tests past the seam.
 //
 // Fail-closed & backwards compatible: NO config file (or an unreadable/malformed one) means
 // EVERY test file is managed — exactly today's behaviour. No existing adopter gets looser by
