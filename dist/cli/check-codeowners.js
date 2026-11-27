@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { tierGlobs } from "../core/tier.js";
 import { resolveTierMapPath } from "../core/tier-map.js";
 import { parseCodeowners, findUncoveredTierGlobs } from "../core/codeowners.js";
+import { CODEOWNERS_PATHS } from "../core/spec-change.js";
 const repo = process.argv[2] ?? ".";
 const mapPath = resolveTierMapPath(repo);
 if (!mapPath) {
@@ -16,7 +17,7 @@ if (!mapPath) {
     process.exit(2);
 }
 const globs = tierGlobs(JSON.parse(readFileSync(mapPath, "utf8")), ["T2", "T3"]);
-const coPath = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"]
+const coPath = CODEOWNERS_PATHS
     .map((p) => join(repo, p))
     .find((p) => existsSync(p));
 const owned = coPath ? parseCodeowners(readFileSync(coPath, "utf8")) : [];
