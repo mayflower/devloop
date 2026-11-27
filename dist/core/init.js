@@ -4,7 +4,7 @@
 // Upgrade-aware: it will NOT shadow an existing tier-map, and it warns LOUDLY (notes) when an
 // existing workflow is left stale — `force` overwrites the workflow for a real migration.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { resolveTierMapPath } from "./tier-map.js";
 import { tierGlobs } from "./tier.js";
 import { parseCodeowners, findUncoveredTierGlobs, codeownersCovers } from "./codeowners.js";
@@ -19,7 +19,7 @@ function tierGlobToCodeownersPath(glob) {
 }
 // tier-map outside `.devloop/` (tools/ or root) as CODEOWNERS paths, else null.
 function tierMapOutsideDevloop(repo, tierMapPath) {
-    const rel = tierMapPath.replace(repo + "/", "");
+    const rel = relative(repo, tierMapPath);
     return rel.startsWith(".devloop/") ? null : ["/" + rel];
 }
 // Project-agnostic skeletons — the adopter tunes them in their constitution/CI.
@@ -90,7 +90,7 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
     const existingTierMap = resolveTierMapPath(targetRepo);
     if (existingTierMap) {
         result.skipped.push(".devloop/tier-map.json");
-        result.notes.push(`tier-map already present (${existingTierMap.replace(targetRepo + "/", "")}) — not writing ` +
+        result.notes.push(`tier-map already present (${relative(targetRepo, existingTierMap)}) — not writing ` +
             `.devloop/tier-map.json (it would shadow yours). Reconcile your map with the devloop tier rules.`);
     }
     else {
