@@ -169,6 +169,11 @@ SDD: **erst die Spec ändern, dann den Code regenerieren.** Läuft als *dieselbe
 4. `implement` entskippt die neuen + geänderten Tests, zieht den **Code** nach und entfernt **toten
    Code** für entfernte REQs. An Tests weiterhin nur `.skip` entfernen.
 
+**Nachtrag ohne Stopp (#27):** `node dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>` klassifiziert die
+Änderung. `nachtrag` (nur Zeilen in „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine
+Überschriftenänderung) läuft ohne Stopp: eigener Commit `docs(spec-nachtrag):`, `prBody` in den PR-Body, der
+Mensch sieht es beim Merge. `anforderung` stoppt wie oben; `unveraendert` ist ein No-op.
+
 Die **Tests sind die Change-Propagation:** geänderte Tests röten genau den betroffenen Code; `implement`
 macht sie grün. Beide Mensch-Tore + die Entskip-Naht gelten unverändert.
 
