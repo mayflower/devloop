@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { initRepo } from "../../src/core/init.js";
 
 const TEMPLATE = "name: devloop-precondition-check\n# ...\n";
-const COVERS = "/services/ @team\n/.devloop/ @team\n";
+const COVERS = "/services/ @team\n/.devloop/ @team\n/tools/tier-map.json @team\n";
 const GAP = "/docs/ @writer\n";
 
 let repo: string;
