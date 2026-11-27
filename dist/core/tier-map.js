@@ -4,6 +4,7 @@
 // Candidate order (most specific first): devloop's own dir, a common tools/ dir, repo root.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { readTreeEntry } from "./tree-entry.js";
 export const TIER_MAP_CANDIDATES = [
     ".devloop/tier-map.json",
     "tools/tier-map.json",
@@ -14,6 +15,22 @@ export function resolveTierMapPath(repo) {
         const path = join(repo, candidate);
         if (existsSync(path))
             return path;
+    }
+    return null;
+}
+/**
+ * tier-map aus der BASIS (`git show`), gleiche Kandidatenreihenfolge wie im Arbeitsbaum. null = die
+ * Basis hat keinen Kandidaten. Ein Kandidat, der kein reguelaeres Blob ist oder nicht parst, wirft
+ * (fail-closed). `path` hat die Form `<baseRef>:<kandidat>`.
+ */
+export function readBaseTierMap(repo, baseRef) {
+    for (const cand of TIER_MAP_CANDIDATES) {
+        const entry = readTreeEntry(repo, baseRef, cand);
+        if (entry.kind === "missing")
+            continue;
+        if (entry.kind !== "file")
+            throw new Error(`${cand} ist in der Basis kein regulaeres Blob (${entry.kind})`);
+        return { path: `${baseRef}:${cand}`, map: JSON.parse(entry.content) };
     }
     return null;
 }
