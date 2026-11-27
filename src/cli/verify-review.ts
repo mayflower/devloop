@@ -150,6 +150,8 @@ if (req.baseRef) {
 // 1d. CODEOWNERS-Wirksamkeit gegen die Basis (REQ-COBASE-1..4, 7): Review-pflichtige Pfade (Pfad-Tier
 // T2/T3 nach der Basis-tier-map) muessen von der Basis-CODEOWNERS gedeckt sein, sonst verlangt GitHub
 // kein Owner-Review. Nur mit baseRef; Erstaufnahme und Basis ohne tier-map sind ausgenommen. Hart, nie pending.
+// Die Erstaufnahme-Ausnahme ist Verteidigung in der Tiefe: Alle tier-map-Kandidaten sind Config-Pfade,
+// bei Erstaufnahme ist readBaseTierMap daher immer null (gemessen: Mutante ohne Ausnahme ist aequivalent).
 if (req.baseRef) {
   let adoption: boolean;
   let base: ReturnType<typeof readBaseTierMap>;
