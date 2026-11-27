@@ -136,7 +136,8 @@ function runSteps(s: Setup, shellFlags: string[] = ["-eo", "pipefail"]) {
   } catch {
     /* Schritt fehlgeschlagen */
   }
-  const drift = tier.status === 0 ? run(stepRun("Drift guard")) : undefined;
+  // Der Drift-Schritt hat ein einzeiliges run:; stepRun() findet nur Block-Skripte und griff auf das run: des Folgeschritts.
+  const drift = tier.status === 0 ? run(`node "$GITHUB_ACTION_PATH/../../../dist/cli/check-codeowners.js" .`) : undefined;
   const verify = tier.status === 0 ? run(stepRun("Verify HUMAN approval")) : undefined;
   return { tier, tierJson, drift, verify };
 }
