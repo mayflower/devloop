@@ -136,7 +136,12 @@ test("[REQ-NACHTRAG-1] Exit 0 und genau ein JSON-Objekt auf stdout mit Feld klas
   const neu = einfuegen(BASIS, "- Grenze zwei.", "- Grenze drei.");
   const r = run(BASIS, neu);
   expect(r.status).toBe(0);
-  expect(r.stdout.trim().split("\n").length).toBe(1);
+  // Genau ein JSON-Objekt (Format frei, auch eingerückt), kein Array, nicht null, nichts sonst auf stdout.
+  const roh: unknown = JSON.parse(r.stdout);
+  expect(roh).not.toBeNull();
+  expect(Array.isArray(roh)).toBe(false);
+  expect(typeof roh).toBe("object");
+  expect(JSON.stringify(JSON.parse(r.stdout))).toBe(JSON.stringify(roh));
   expect(Object.keys(r.json).sort()).toEqual(["gruende", "klasse", "prBody"]);
   expect(Array.isArray(r.json.gruende)).toBe(true);
 });
@@ -459,9 +464,12 @@ test("[REQ-NACHTRAG-4] Überschriftsebene geändert (## Folge-Issues -> ### Folg
 
 test("[REQ-NACHTRAG-4] Verschieben von Inhalt per Umbenennen der Überschrift in einen Nachtrags-Abschnitt -> anforderung", () => {
   // Der Inhalt von 'Umsetzung' bleibt Zeile für Zeile gleich; nur die Überschrift heißt jetzt Folge-Issues 2.
+  // Zugehörigkeitsregel: Eine Überschriftenzeile gehört zu dem Abschnitt, den sie eröffnet. Die alte
+  // Zeile eröffnet "Umsetzung" (kein Nachtrag) -> ueberschrift + abschnitt; die neue eröffnet einen
+  // Nachtrags-Abschnitt -> nur ueberschrift. Reihenfolge: erst alt, dann neu.
   const r = run(BASIS, ersetzen(BASIS, "## Umsetzung", "## Folge-Issues 2"));
   expect(r.json.klasse).toBe("anforderung");
-  expect(r.json.gruende.map((g) => g.regel)).toEqual(["ueberschrift", "ueberschrift"]);
+  expect(r.json.gruende.map((g) => `${g.stand}:${g.regel}`)).toEqual(["alt:ueberschrift", "alt:abschnitt", "neu:ueberschrift"]);
 });
 
 // ---------------------------------------------------------------------------------------------
