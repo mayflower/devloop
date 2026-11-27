@@ -259,3 +259,101 @@ test("[REQ-REQDEF-3] echte Spec: Fortsetzungszeile von REQ-SPECGATE-8 nennt REQ-
   const neu = s.replace(line, "  REQ-SPECGATE-5 gilt für den Inhalt im Head.");
   expect(reqDelta(s, neu)).toEqual({ added: [], changed: ["REQ-SPECGATE-8"], removed: [] });
 });
+
+// ---- REQ-REQDEF-2: Definitionsblock ueber Leerzeilen (synthetisch, Form wie bei mehrabsaetzigen Kriterien)
+
+const MULTI = (p2: string, p3 = "Dritter Absatz."): string => `# Spec
+
+- **REQ-X-1 [When]:** Wenn A, soll das System B tun.
+
+  ${p2}
+
+  ${p3}
+- **REQ-X-2 [If]:** Wenn C, soll das System D tun.
+`;
+
+test("[REQ-REQDEF-2] zweiter eingerueckter Absatz nach Leerzeile aendert sich -> changed", () => {
+  expect(reqDelta(MULTI("Nachschaerfung eins."), MULTI("Nachschaerfung zwei."))).toEqual({
+    added: [],
+    changed: ["REQ-X-1"],
+    removed: [],
+  });
+});
+
+const MULTI3 = (p3: string): string => `# Spec
+
+- **REQ-X-1 [When]:** Wenn A, soll das System B tun.
+
+  Zweiter Absatz.
+
+
+  ${p3}
+- **REQ-X-2 [If]:** Wenn C, soll das System D tun.
+`;
+
+test("[REQ-REQDEF-2] dritter Absatz nach zwei Leerzeilen aendert sich -> changed", () => {
+  expect(reqDelta(MULTI3("Drei alt."), MULTI3("Drei neu."))).toEqual({
+    added: [],
+    changed: ["REQ-X-1"],
+    removed: [],
+  });
+});
+
+const PARA_THEN_PROSE = (prose: string): string => `# Spec
+
+**REQ-X-1** *(Contract)*
+Das Event \`order.created\` hat ein Feld id.
+
+${prose}
+
+**REQ-X-2** *(Contract)*
+Zwei.
+`;
+
+test("[REQ-REQDEF-2] Absatzform, Leerzeile, nicht eingerueckter Fliesstext aendert sich -> leeres Delta", () => {
+  expect(reqDelta(PARA_THEN_PROSE("Hinweis alt."), PARA_THEN_PROSE("Hinweis neu."))).toEqual(EMPTY);
+});
+
+const ITEM_THEN_PROSE = (prose: string): string => `# Spec
+
+- **REQ-X-1 [When]:** Wenn A, soll das System B tun.
+
+${prose}
+
+- **REQ-X-2 [If]:** Wenn C, soll das System D tun.
+`;
+
+test("[REQ-REQDEF-2] Listenpunkt, Leerzeile, nicht eingerueckter Absatz aendert sich -> leeres Delta", () => {
+  expect(reqDelta(ITEM_THEN_PROSE("Absatz alt."), ITEM_THEN_PROSE("Absatz neu."))).toEqual(EMPTY);
+});
+
+const ITEM_THEN_HEADING = (text: string): string => `# Spec
+
+- **REQ-X-1 [When]:** Wenn A, soll das System B tun.
+## Hinweise
+${text}
+`;
+
+test("[REQ-REQDEF-2] Kriterium direkt von Ueberschrift gefolgt, Text darunter aendert sich -> leeres Delta", () => {
+  expect(reqDelta(ITEM_THEN_HEADING("Alt."), ITEM_THEN_HEADING("Neu."))).toEqual(EMPTY);
+});
+
+// ---- Kriteriumstext: optionaler Trenner direkt nach der ID zaehlt nicht
+
+const SEP = (sep: string): string => `# Spec
+
+- REQ-X-1${sep} Wenn A, soll das System B tun.
+- REQ-X-2 [If]: Zwei.
+`;
+
+test("[REQ-REQDEF-2] nur der Trenner nach der ID wechselt (: -> —, - ) -> leeres Delta", () => {
+  expect(reqDelta(SEP(":"), SEP(" —"))).toEqual(EMPTY);
+  expect(reqDelta(SEP(":"), SEP(" -"))).toEqual(EMPTY);
+  expect(reqDelta(SEP(""), SEP(":"))).toEqual(EMPTY);
+});
+
+test("[REQ-REQDEF-2] fett (Trenner direkt nach der ID, in der Fettung): Trenner wechselt -> leeres Delta; Text -> changed", () => {
+  const f = (sep: string, t: string): string => `- **REQ-X-1${sep}** ${t}\n- **REQ-X-2** Zwei.\n`;
+  expect(reqDelta(f(":", "Wenn A."), f(" —", "Wenn A."))).toEqual(EMPTY);
+  expect(reqDelta(f(":", "Wenn A."), f(" —", "Wenn B."))).toEqual({ added: [], changed: ["REQ-X-1"], removed: [] });
+});
