@@ -25,8 +25,10 @@ Du erzeugst die **`spec.md`** — die Wurzel des Vertrauens (§5.1). Alles Spät
 
 Existiert die `spec.md` schon (Feature wird geändert, nicht neu angelegt): **lade sie und ändere gezielt** die betroffenen `REQ-`-Kriterien (ändern/hinzufügen/entfernen) — `REQ-`-IDs **stabil halten** (geänderter REQ behält seine ID, damit `spec-to-tests`/Trace die Zuordnung halten). Tier neu ableiten. Der Rest der Kette läuft identisch (Spec-PR → Review → implement); die Stationen erkennen die Änderung am Delta.
 
+Nach jeder späteren Spec-Änderung bestimmt **die CLI die Klasse, nie du**: `node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>`. `nachtrag` (nur „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch und das `prBody` der CLI in den PR-Body, **ohne Stopp**. `anforderung` → bisheriger Weg mit Spec-Review-Stopp. `unveraendert` → nichts committen.
+
 ## Grenzen
 
 - **Kein Produktcode, keine Tests.** Nur die Spec.
 - Fülle Lücken **nicht** mit dem statistisch Wahrscheinlichen — frage den Menschen (Mechanismus-B-Falle, §2).
-- Du bist die erste Station: dein Output ist die `spec.md`, danach folgt der **harte Spec-Review-Stopp** (§5.1), bevor irgendetwas weiterläuft.
+- Du bist die erste Station: dein Output ist die `spec.md`, danach folgt der **harte Spec-Review-Stopp** (§5.1), bevor irgendetwas weiterläuft (bei späteren Änderungen nur für die Klasse `anforderung`, siehe oben).
