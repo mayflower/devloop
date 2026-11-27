@@ -3,7 +3,7 @@
 // nur `origin/main` (per "Fetch base"). Ein baseRef ohne `origin/` laeuft hier ins Leere (vgl. #17).
 import { test, expect, afterEach } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
@@ -63,6 +63,7 @@ function setup(opts: {
   withDefaults?: boolean;
   change: (repo: string) => void;
   author?: string;
+  baseHook?: (repo: string) => void; // z. B. Symlinks, vor dem Basis-Commit
 }) {
   const tmp = mkdtempSync(join(tmpdir(), "precond-action-cfg-"));
   dirs.push(tmp);
@@ -79,6 +80,7 @@ function setup(opts: {
   write(author, "README.md", "x\n");
   const files = { ...(opts.withDefaults === false ? {} : CONFIG), ...opts.baseFiles };
   for (const [p, c] of Object.entries(files)) if (c !== null) write(author, p, c);
+  opts.baseHook?.(author);
   git(author, "add", "-A");
   git(author, "commit", "-q", "-m", "base");
   git(author, "push", "-q", "origin", "main");
@@ -110,7 +112,7 @@ function setup(opts: {
 
 type Setup = ReturnType<typeof setup>;
 
-function runSteps(s: Setup) {
+function runSteps(s: Setup, shellFlags: string[] = ["-eo", "pipefail"]) {
   const env = {
     PATH: `${s.bin}:${process.env.PATH}`,
     HOME: process.env.HOME ?? "/tmp",
@@ -123,7 +125,7 @@ function runSteps(s: Setup) {
     REPO: "o/r",
     GH_TOKEN: "stub",
   };
-  const run = (script: string) => spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", script], { cwd: s.work, env, encoding: "utf8" });
+  const run = (script: string) => spawnSync("bash", ["--noprofile", "--norc", ...shellFlags, "-c", script], { cwd: s.work, env, encoding: "utf8" });
   const fetch = run(`git fetch origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"`);
   if (fetch.status !== 0) throw new Error("fetch: " + fetch.stderr);
   const tier = run(stepRun("Compute the AUTHORITATIVE tier"));
@@ -312,4 +314,67 @@ test("[REQ-CFGBASE-7] Gegenprobe: normaler PR (nur src/a.ts, T1, Basis mit Confi
   expect(r.tierJson.tier).toBe("T1");
   expect(r.verify!.status).toBe(0);
   expect(lastJson(r.verify!.stdout).ok).toBe(true);
+});
+
+// Symlink in der Basis: ls-tree-Modus 120000 ist kein reguelaeres Blob. Der PR repariert/leert das Ziel im HEAD.
+function linkInBase(link: string, target: string) {
+  return (repo: string) => {
+    mkdirSync(dirname(join(repo, link)), { recursive: true });
+    symlinkSync(target, join(repo, link));
+  };
+}
+
+test("[REQ-CFGBASE-3] Basis-protected-globs ist ein Symlink auf cfg/pg.json, PR leert cfg/pg.json und aendert stryker.conf.json -> Schritt rot, config-invalid", () => {
+  const s = setup({
+    baseFiles: { ".devloop/protected-globs.json": null, "cfg/pg.json": '["**/stryker.conf.*"]', CODEOWNERS: COVER },
+    baseHook: linkInBase(".devloop/protected-globs.json", "../cfg/pg.json"),
+    change: (w) => {
+      write(w, "cfg/pg.json", "[]");
+      write(w, "stryker.conf.json", "{}");
+    },
+  });
+  const r = runSteps(s);
+  expect(r.tier.status).toBe(0);
+  expect(r.verify!.status).toBe(1);
+  expect(r.verify!.stdout).toMatch(/config-invalid/);
+});
+
+test("[REQ-CFGBASE-3] Basis-bot-logins ist ein Symlink, PR leert das Ziel, Bot-Approval auf HEAD -> Schritt rot, config-invalid", () => {
+  const s = setup({
+    baseFiles: {
+      ".devloop/bot-logins.json": null,
+      "cfg/bl.json": '["bot"]',
+      ".devloop/tier-map.json": JSON.stringify({ T2: ["src/**"], T1: ["**"] }),
+      CODEOWNERS: COVER,
+    },
+    baseHook: linkInBase(".devloop/bot-logins.json", "../cfg/bl.json"),
+    author: "someone",
+    change: (w) => {
+      write(w, "cfg/bl.json", "[]");
+      write(w, "src/a.ts", "x\n");
+    },
+  });
+  writeFileSync(s.reviewsFile, JSON.stringify([{ user: "bot", state: "APPROVED", commit_id: s.sha }]));
+  const r = runSteps(s);
+  expect(r.verify!.status).toBe(1);
+  expect(r.verify!.stdout).toMatch(/config-invalid/);
+});
+
+test("[REQ-CFGBASE-3] Basis-tier-map ist ein Symlink, HEAD hat gueltige Datei am Ziel -> Tier-Schritt rot", () => {
+  const s = setup({
+    baseFiles: { ".devloop/tier-map.json": null, "cfg/tm.json": "{", CODEOWNERS: COVER },
+    baseHook: linkInBase(".devloop/tier-map.json", "../cfg/tm.json"),
+    change: (w) => write(w, "cfg/tm.json", T1_MAP),
+  });
+  const r = runSteps(s);
+  expect(r.tier.status).not.toBe(0);
+});
+
+test("[REQ-CFGBASE-3] Tier-Schritt ohne -e (nur -o pipefail) mit kaputter Basis-tier-map -> rc != 0 (|| exit 1 im Block)", () => {
+  const s = setup({
+    baseFiles: { ".devloop/tier-map.json": "{", CODEOWNERS: COVER },
+    change: (w) => write(w, ".devloop/tier-map.json", T1_MAP),
+  });
+  const r = runSteps(s, ["-o", "pipefail"]);
+  expect(r.tier.status).not.toBe(0);
 });
