@@ -127,11 +127,15 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
         else {
             result.skipped.push(coRel);
             const patterns = parseCodeowners(readFileSync(join(targetRepo, coRel), "utf8"));
-            const uncoveredCfg = uncoveredSpecPaths([".devloop/tier-map.json", ...(tierMapOutsideDevloop(targetRepo, tierMapPath) ?? []).map((p) => p.slice(1))], patterns);
-            if (!patterns.some((pat) => codeownersCovers(".devloop/config.json", pat)) || uncoveredCfg.length > 0) {
-                result.notes.push(`CODEOWNERS (${coRel}) does not cover .devloop/ — add "/.devloop/ @OWNER" (and your tier-map path ` +
-                    `if it lives outside .devloop/). Without it, every change to .devloop/** fails verify-review ` +
-                    `with config-unguarded.`);
+            const outside = (tierMapOutsideDevloop(targetRepo, tierMapPath) ?? []).map((p) => p.slice(1));
+            const uncoveredCfg = [
+                ...(patterns.some((pat) => codeownersCovers(".devloop/config.json", pat)) ? [] : [".devloop/"]),
+                ...uncoveredSpecPaths(outside, patterns),
+            ];
+            if (uncoveredCfg.length > 0) {
+                result.notes.push(`CODEOWNERS (${coRel}) does not cover these devloop config paths: ${uncoveredCfg.join(", ")} — add ` +
+                    `owner lines (e.g. "/.devloop/ @OWNER"). Without them, every change to .devloop/** or the ` +
+                    `tier-map fails verify-review with config-unguarded.`);
             }
             const uncovered = findUncoveredTierGlobs(t2t3, patterns);
             if (uncovered.length > 0) {
