@@ -179,6 +179,9 @@ SDD: **erst die Spec ändern, dann den Code regenerieren.** Läuft als *dieselbe
 1. `specify` lädt die `spec.md` und ändert gezielt die betroffenen `REQ-`-Kriterien (IDs **stabil** halten).
 2. `spec-to-tests` fasst per `req-delta` **genau** die geänderten REQs an: neu → `.skip`'t; **geändert →
    Test ändern + wieder `.skip`'en** (sonst rötet der jetzt-aktive Test `main`); entfernt → Test weg.
+   `req-delta` wertet nur REQ-**Definitionen** (#30): Zeilen `- **REQ-…**` am Zeilenanfang (ohne fette
+   Definition in der Spec: `- REQ-…`/`# REQ-…`); Fortsetzungszeilen gehören zum Kriterium, bloße
+   Nennungen und „Bekannte Grenzen“/„Folge-Issues“ zählen nicht.
 3. Spec-PR auf `devloop/spec/<slug>` → Review → Merge.
 4. `implement` entskippt die neuen + geänderten Tests, zieht den **Code** nach und entfernt **toten
    Code** für entfernte REQs. An Tests weiterhin nur `.skip` entfernen.
