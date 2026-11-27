@@ -52,6 +52,7 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      Datei, gilt `["**/spec.md"]`; eigene Globs **ersetzen** den Default. Ungültig (kein JSON, kein Array,
      **leeres Array**, Element kein nicht-leerer String) → `verify-review` failt fail-closed, bei jedem PR.
      Beispiel: `["docs/specs/*.md"]`. Die Globs werden aus der **Basis** gelesen (`git show origin/<base>:.devloop/spec-globs.json`), nicht aus dem PR: Eine Änderung der Datei wirkt erst nach dem Merge, ein PR kann sich so nicht selbst aus der Spec-Erkennung nehmen. Fehlt die Datei in der Basis, gilt der Default.
+   - **Glob-Semantik (seit v0.15.0, für alle Glob-Angaben:** tier-map, protected-globs, managed-tests, spec-globs, CODEOWNERS-Deckung**):** `**` passt auf jedes Zeichen inkl. `/`, `*` und `?` nur innerhalb eines Segments. Zeilenenden (LF, CR, U+2028, U+2029) im Pfad sind gewöhnliche Zeichen, die Gates greifen also auch auf Pfaden mit Zeilenende.
 5. **CODEOWNERS = das §9-Merge-Tor (wichtig).** CODEOWNERS muss decken:
    - das **Spec-Verzeichnis** (z.B. `/.specify/specs/`) → erzwingt den Spec-Review-Stopp, tier-unabhängig.
      **Pflicht seit v0.10.0 und wird erzwungen:** Bei jeder Spec-Änderung (Head-Branch `devloop/spec/*`
