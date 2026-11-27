@@ -59,7 +59,7 @@ echo '<DriverState-JSON>' | node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/next-action.js
 | `DONE` | Fertig (T0/T1 Auto-Merge bei grün; T2/T3 erst nach Mensch-Stopp). |
 
 **Nachtragsweg (#27, spätere Spec-Änderung):** Die Klasse bestimmt **nie der Agent**, sondern die CLI:
-`node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>` (abgenommener Stand = Spec auf der Basis; Exit 2 = Eingabe falsch, nichts raten). `klasse: "unveraendert"` → nichts zu tun. `"nachtrag"` (nur Zeilen in „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → **ohne Stopp**: eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch, `prBody` unverändert in den PR-Body; weiter in der Kette. `"anforderung"` → der bisherige Weg mit Spec-Review-Stopp (`gruende` dem Menschen nennen).
+`node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>` (abgenommener Stand = Spec auf der Basis). Den abgenommenen Stand erzeugst du als Datei: `git show <basis-ref>:<spec-pfad> > <tmp>/alt.md` (Basis des Impl-PR bzw. des laufenden PR). **Exit 2** der CLI (auch wenn die Spec in der Basis fehlt, also neue Spec) → wie `anforderung` behandeln, also Stopp; nie raten. `klasse: "unveraendert"` → nichts zu tun. `"nachtrag"` (nur Zeilen in „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → **ohne Stopp**: eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch, `prBody` unverändert in den PR-Body; weiter in der Kette. `"anforderung"` → der bisherige Weg mit Spec-Review-Stopp (`gruende` dem Menschen nennen).
 
 ## Zwei Schleifen (§10 „Wo der Loop läuft")
 
