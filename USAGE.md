@@ -48,6 +48,7 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
      auf die Pfade, die `spec-to-tests` wirklich autort (deine Käfig-Services / Twin-Areas),
      sonst blockiert `verify-unskip` jeden gewöhnlichen PR, der eine normale aktive Testdatei
      hinzufügt. Fehlt die Datei (oder ist sie kaputt), gilt fail-closed „alles verwaltet".
+     **Glob-Semantik (alle Glob-Dateien, seit v0.15.0):** `**` passt auf jedes Zeichen inkl. `/`, `*` und `?` nur innerhalb eines Segments; Zeilenenden (LF, CR, U+2028, U+2029) im Pfad sind gewöhnliche Zeichen. Gates greifen damit auch auf Pfaden mit Zeilenende.
    - `.devloop/spec-globs.json` — **was als Spec-Datei gilt** (JSON-Array nicht-leerer Globs). Fehlt die
      Datei, gilt `["**/spec.md"]`; eigene Globs **ersetzen** den Default. Ungültig (kein JSON, kein Array,
      **leeres Array**, Element kein nicht-leerer String) → `verify-review` failt fail-closed, bei jedem PR.
