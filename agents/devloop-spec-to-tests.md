@@ -31,7 +31,7 @@ Für **jede** `REQ-<CTX>-<nr>`-ID **mindestens einen** Test, getaggt mit der ID 
 ```
 node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/req-delta.js <alte-spec> <neue-spec>   # {added, changed, removed}
 ```
-(alte Spec: `git show <base>:<spec.md>`). Dann je Fall:
+(alte Spec: `git show <base>:<spec.md>`). Als Definition zählen nur Zeilen am Zeilenanfang: `- **REQ-…**` (fett) bzw., in einer Spec ganz ohne fette Definition, `- REQ-…` oder `# REQ-…` (schlicht). Zum Kriterium gehören die Fortsetzungszeilen bis zur nächsten Leerzeile, Überschrift oder Definition; Nennungen im Fließtext und Zeilen in „Bekannte Grenzen“/„Folge-Issues“ zählen nicht. Dann je Fall:
 - **added** → neuen Test, `.skip`'t (wie oben).
 - **changed** → den bestehenden Test (gleiche `REQ-`-ID) ändern **und `.skip` wieder setzen**. Sonst rötet der jetzt-aktive Test gegen den (noch alten) Code `main` beim Spec-PR-Merge. `implement` entskippt ihn später, nachdem der Code nachgezogen ist.
 - **removed** → den Test entfernen (sonst rote verwaiste `REQ-`-Referenz im Trace-Gate).
