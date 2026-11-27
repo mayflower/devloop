@@ -658,3 +658,25 @@ test("[REQ-NACHTRAG-3] Realfall #13: ein REQ-Kriterium statt der Grenze im selbe
   expect(r.json.klasse).toBe("anforderung");
   expect(r.json.gruende.map((g) => g.regel)).toEqual(["req-definition"]);
 });
+
+// ---------------------------------------------------------------------------------------------
+// Nachgezogene Detektoren (Kritikerrunde #27)
+// ---------------------------------------------------------------------------------------------
+
+test("[REQ-NACHTRAG-4] neue H1-Zeile '# Anforderungen, Teil 2' unter Bekannte Grenzen -> anforderung mit regel ueberschrift", () => {
+  const h = "# Anforderungen, Teil 2";
+  const neu = einfuegen(BASIS, "- Grenze zwei.", h);
+  const r = run(BASIS, neu);
+  expect(r.json.klasse).toBe("anforderung");
+  expect(r.json.gruende).toContainEqual({ stand: "neu", zeile: nr(neu, h), regel: "ueberschrift", text: h });
+});
+
+test("[REQ-NACHTRAG-2] nur die Einrückung der Fortsetzungszeile eines mehrzeiligen REQ in Anforderungen geändert -> anforderung, regel abschnitt", () => {
+  const req = "- **REQ-X-1** *(event-driven)* — Wortlaut eins.";
+  const alt = einfuegen(BASIS, req, "  Fortsetzung des Kriteriums.");
+  const neu = einfuegen(BASIS, req, "      Fortsetzung des Kriteriums.");
+  const r = run(alt, neu);
+  expect(r.json.klasse).toBe("anforderung");
+  expect(r.json.gruende).toContainEqual({ stand: "alt", zeile: nr(alt, "  Fortsetzung des Kriteriums."), regel: "abschnitt", text: "  Fortsetzung des Kriteriums." });
+  expect(r.json.gruende).toContainEqual({ stand: "neu", zeile: nr(neu, "      Fortsetzung des Kriteriums."), regel: "abschnitt", text: "      Fortsetzung des Kriteriums." });
+});
