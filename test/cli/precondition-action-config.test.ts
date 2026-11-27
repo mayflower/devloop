@@ -123,7 +123,7 @@ function runSteps(s: Setup) {
     REPO: "o/r",
     GH_TOKEN: "stub",
   };
-  const run = (script: string) => spawnSync("bash", ["-c", script], { cwd: s.work, env, encoding: "utf8" });
+  const run = (script: string) => spawnSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", script], { cwd: s.work, env, encoding: "utf8" });
   const fetch = run(`git fetch origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"`);
   if (fetch.status !== 0) throw new Error("fetch: " + fetch.stderr);
   const tier = run(stepRun("Compute the AUTHORITATIVE tier"));
