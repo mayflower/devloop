@@ -40,7 +40,7 @@ Hat der Mensch Änderungen angefordert, liefert `next-action`:
   (Rückschleife), dann `spec-to-tests` → Spec-PR aktualisieren → erneut Review.
 
 **Nachtragsweg (#27):** Die Klasse bestimmt **nie der Agent**, sondern die CLI:
-`node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>` (abgenommener Stand = Spec auf der Basis; Exit 2 = Eingabe falsch, nichts raten). `klasse: "unveraendert"` → nichts zu tun. `"nachtrag"` (nur Zeilen in „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → **ohne Stopp**: eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch, `prBody` unverändert in den PR-Body; weiter in der Kette. `"anforderung"` → der bisherige Weg mit Spec-Review-Stopp (`gruende` dem Menschen nennen).
+`node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>` (abgenommener Stand = Spec auf der Basis). Den abgenommenen Stand erzeugst du als Datei: `git show <basis-ref>:<spec-pfad> > <tmp>/alt.md` (Basis des Impl-PR bzw. des laufenden PR). **Exit 2** der CLI (auch wenn die Spec in der Basis fehlt, also neue Spec) → wie `anforderung` behandeln, also Stopp; nie raten. `klasse: "unveraendert"` → nichts zu tun. `"nachtrag"` (nur Zeilen in „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → **ohne Stopp**: eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch, `prBody` unverändert in den PR-Body; weiter in der Kette. `"anforderung"` → der bisherige Weg mit Spec-Review-Stopp (`gruende` dem Menschen nennen).
 
 Die zwei Mensch-Tore, die Entskip-Naht und das tier-gestufte Merge gelten unverändert — Resume ist
 nur ein anderer **Einstieg** in dieselbe Maschine, kein Sonderpfad.
