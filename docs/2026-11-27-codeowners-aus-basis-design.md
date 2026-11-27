@@ -113,6 +113,20 @@ dokumentiert.
   Branch-Protection verlangt CODEOWNER-Reviews (wie in #4).
 - **Nach dem Update auf v0.13.0** ist jeder T2/T3-PR rot, dessen Pfade die Basis-CODEOWNERS nicht
   decken. Der Drift-Wächter verhindert solche Lücken seit jeher auf dem HEAD; rot wird es nur in
-  Repos, die schon mit Lücke auf `main` stehen. Reparatur über einen PR, der nur CODEOWNERS ändert. Steht `**/CODEOWNERS` im Protected-Set des
+  Repos, die schon mit Lücke auf `main` stehen, oder deren tier-map einen Default T2/T3 ohne
+  `**`-Catch-all hat (der Drift-Wächter prüft den Default nicht; dann `*`-Zeile in CODEOWNERS).
+  Das Init-Skeleton ist nicht betroffen. Reparatur über einen PR, der nur CODEOWNERS ändert. Steht `**/CODEOWNERS` im Protected-Set des
   Repos, scheitert dieser PR wie bisher am Gate-Tamper-Check; das ändert #14 nicht.
 - **CODEOWNERS-Matching** (großzügig, Owner ohne Schreibrecht, `@OWNER`-Platzhalter) gilt wie in #4.
+- **Basis ohne tier-map:** Findet sich in der Basis kein tier-map-Kandidat, greift das Gate nicht.
+  Der PR, der eine tier-map hinzufügt, ist eine Config-Änderung und braucht über das Config-Gate
+  (#13) schon ein Review. Die Erstaufnahme-Ausnahme ist dadurch redundant (jeder Kandidat ist ein
+  Config-Pfad) und bleibt als Verteidigung in der Tiefe.
+- **Drift-Wächter liest CODEOWNERS in anderer Reihenfolge als GitHub** (Root vor `.github/`). Legt
+  ein PR eine vorrangige `.github/CODEOWNERS` mit Lücke an, kommt sie unbemerkt nach `main`; das
+  Gate fängt sie beim nächsten T2/T3-PR. Vorbestehend, Folge-Issue #32.
+- **Matching zu streng:** `/services @x` (Verzeichnis ohne `/`) und escapte Leerzeichen
+  (`/my\ dir/`) gelten als ungedeckt, obwohl GitHub sie deckt. Der Drift-Wächter ist dort schon
+  heute rot, das Gesamtergebnis ändert sich nicht.
+- **Pfade mit Zeilenumbruch** treffen keinen Glob (#15). Mit explizitem `default:"T1"` fällt ein
+  solcher Pfad aus T2 heraus; ohne Default (Skeleton) bleibt es fail-closed.
