@@ -357,3 +357,39 @@ test("[REQ-REQDEF-2] fett (Trenner direkt nach der ID, in der Fettung): Trenner 
   expect(reqDelta(f(":", "Wenn A."), f(" —", "Wenn A."))).toEqual(EMPTY);
   expect(reqDelta(f(":", "Wenn A."), f(" —", "Wenn B."))).toEqual({ added: [], changed: ["REQ-X-1"], removed: [] });
 });
+
+// ---- Tab-Einrueckung und schlichte Zeile im Block einer fetten Spec
+
+const TABBED = (p2: string): string => `# Spec
+
+- **REQ-X-1 [When]:** Wenn A, soll das System B tun.
+
+\t${p2}
+- **REQ-X-2 [If]:** Wenn C, soll das System D tun.
+`;
+
+test("[REQ-REQDEF-2] Absatz nach Leerzeile mit Tab eingerueckt aendert sich -> changed", () => {
+  expect(reqDelta(TABBED("Tab alt."), TABBED("Tab neu."))).toEqual({
+    added: [],
+    changed: ["REQ-X-1"],
+    removed: [],
+  });
+});
+
+const PLAIN_IN_BLOCK = (tail: string): string => `# Spec
+
+**REQ-X-1** *(Contract)*
+REQ-X-5 gilt dabei ebenfalls.
+${tail}
+
+**REQ-X-2** *(Contract)*
+Zwei.
+`;
+
+test("[REQ-REQDEF-3] schlichte Zeile (REQ-X-5 …) beendet in fetter Spec den Block nicht -> Zeile danach aendert X-1", () => {
+  expect(reqDelta(PLAIN_IN_BLOCK("Schluss alt."), PLAIN_IN_BLOCK("Schluss neu."))).toEqual({
+    added: [],
+    changed: ["REQ-X-1"],
+    removed: [],
+  });
+});
