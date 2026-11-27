@@ -1,5 +1,6 @@
 // Dependency-free glob matching (so the shipped dist needs no runtime deps).
 // Supports: ** (any chars incl. /), **/ (zero-or-more leading dirs), * (non-slash), ? (one non-slash).
+// Line terminators (LF, CR, U+2028, U+2029) in a path are ordinary characters: the "s" flag lets ** match them.
 
 export function globToRegExp(glob: string): RegExp {
   let re = "";
@@ -23,7 +24,7 @@ export function globToRegExp(glob: string): RegExp {
       re += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
     }
   }
-  return new RegExp("^" + re + "$");
+  return new RegExp("^" + re + "$", "s");
 }
 
 export const matchesAnyGlob = (path: string, globs: string[]): boolean =>
