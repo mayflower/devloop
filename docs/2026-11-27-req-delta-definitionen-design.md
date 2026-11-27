@@ -112,4 +112,12 @@ dokumentiert.
   der Nachtrags-Abschnitte gilt als Definition. Mit REQ-REQDEF-4 überschreibt sie keine frühere
   Definition, kann aber eine fehlende vortäuschen.
 - **`spec-amend-class`** erkennt REQ-Definitionen weiter nur in der kanonischen Form
-  `- **REQ-…**` (Grenze aus #27). Den Abgleich beider Erkennungen macht #30 nicht; Folge-Issue.
+  `- **REQ-…**` (Grenze aus #27). Den Abgleich beider Erkennungen macht #30 nicht; Folge-Issue #36.
+- **Folgeabsätze ohne Vertragsänderung:** Eingerückte Absätze unter einem Kriterium
+  (Implementierungshinweise, „Quelle: …“, Detektor-Nachzug) gehören zum Block. Ändern sie sich, steht
+  die ID unter `changed`, auch wenn der Vertrag gleich bleibt; spec-to-tests leitet dann unnötig neu
+  ab (fail-safe). Gemessen in bsk 633 (FORUM-93/94).
+- **Änderung über Verweis:** Verweist ein Kriterium auf ein anderes („wie REQ-X-1“), bleibt sein
+  Text gleich, wenn sich das andere ändert; `req-delta` meldet nur das andere (bsk 776 SLAUTHOR-21).
+- **Trenner hinter der Fettung:** Bei `**REQ-X-1**: Text` steht der Doppelpunkt nicht direkt nach
+  der ID und wird nicht abgeschnitten. Wirkung nur, wenn sich allein der Trenner ändert.
