@@ -40,7 +40,11 @@ function write(repo: string, rel: string, content: string): void {
 
 // Basis-Commit auf Branch "base", dann Branch "head" mit den angegebenen Pfaden. Gibt diffPaths so
 // zurueck, wie die Action sie liefert: NUL-getrennt, ungequotet.
-function repoWithChange(baseFiles: Record<string, string>, changed: string[]): { repo: string; diffPaths: string[] } {
+function repoWithChange(
+  baseFiles: Record<string, string>,
+  changed: string[],
+  content = "neu\n",
+): { repo: string; diffPaths: string[] } {
   const repo = mkdtempSync(join(tmpdir(), "glob-zeilenende-"));
   dirs.push(repo);
   git(repo, "init", "-q", "-b", "base");
@@ -51,7 +55,7 @@ function repoWithChange(baseFiles: Record<string, string>, changed: string[]): {
   git(repo, "add", "-A");
   git(repo, "commit", "-q", "-m", "base");
   git(repo, "checkout", "-q", "-b", "head");
-  for (const p of changed) write(repo, p, "neu\n");
+  for (const p of changed) write(repo, p, content);
   git(repo, "add", "-A");
   git(repo, "commit", "-q", "-m", "head");
   const raw = git(repo, "diff", "--no-renames", "-z", "--name-only", "base", "HEAD");
@@ -239,3 +243,62 @@ test("[REQ-GLOBNL-5] derive-tier und verify-review ohne Zeilenende wie bisher", 
   const r = runVerify(repo, { headRef: "devloop/x", diffPaths });
   expect(r.out.reason).toMatch(/^spec-unguarded/);
 });
+
+// --- weitere Nutzer von globToRegExp (REQ-GLOBNL-1, -4): jeder Nutzer wird einzeln ueber die CLI geprueft ---
+
+const unskipCli = join(root, "dist/cli/verify-unskip.js");
+const ACTIVE_TEST = 'import { test } from "vitest";\ntest("evil", () => {});\n';
+
+for (const [name, x] of EOLS) {
+  // Config-Gate (config-change.ts): Pfad mit Zeilenende unter .devloop/ ist ein Config-Pfad.
+  test(`[REQ-GLOBNL-1] Config-Gate: .devloop/a<${name}>b.json, Basis-CODEOWNERS deckt .devloop nicht -> config-unguarded`, () => {
+    const p = `.devloop/a${x}b.json`;
+    const { repo, diffPaths } = repoWithChange(
+      { ".devloop/bot-logins.json": '["agent-bot"]', CODEOWNERS: "/specs/ @alice\n" },
+      [p],
+    );
+    expect(diffPaths).toEqual([p]);
+    const r = runVerify(repo, { headRef: "devloop/x", diffPaths });
+    expect(r.status).toBe(1);
+    expect(r.out.ok).toBe(false);
+    expect(r.out.reason).toMatch(/^config-unguarded/);
+  });
+
+  // verify-unskip (managed-tests.ts): Testdatei in Verzeichnis mit Zeilenende liegt im verwalteten Scope.
+  test(`[REQ-GLOBNL-1] verify-unskip: aktive Testdatei test/a<${name}>b/x.test.ts bei managed-tests ["test/**"] -> Verstoss, Exit 1`, () => {
+    const p = `test/a${x}b/x.test.ts`;
+    const { repo, diffPaths } = repoWithChange({ ".devloop/managed-tests.json": '["test/**"]' }, [p], ACTIVE_TEST);
+    expect(diffPaths).toEqual([p]);
+    const r = spawnSync("node", [unskipCli, repo, "base"], { encoding: "utf8" });
+    expect(r.status).toBe(1);
+    const out = JSON.parse(r.stdout);
+    expect(out.ok).toBe(false);
+    expect(out.unmanaged).toEqual([]);
+    expect(out.checked).toEqual([p]);
+    expect(out.violations.map((v: { file: string }) => v.file)).toEqual([p]);
+  });
+
+  // CODEOWNERS-Gate (codeowners.ts): Pfad mit Zeilenende, Tier T3 per Basis-tier-map.
+  test(`[REQ-GLOBNL-4] CODEOWNERS-Gate: services/a<${name}>b/x.ts (T3), Basis-CODEOWNERS ohne services -> codeowners-unguarded`, () => {
+    const p = `services/a${x}b/x.ts`;
+    const { repo, diffPaths } = repoWithChange(
+      { ".devloop/tier-map.json": JSON.stringify({ T3: ["services/**"], default: "T1" }), CODEOWNERS: "/src/ @alice\n" },
+      [p],
+    );
+    expect(diffPaths).toEqual([p]);
+    const r = runVerify(repo, { headRef: "devloop/x", diffPaths });
+    expect(r.status).toBe(1);
+    expect(r.out.ok).toBe(false);
+    expect(r.out.reason).toMatch(/^codeowners-unguarded/);
+  });
+
+  test(`[REQ-GLOBNL-4] CODEOWNERS-Gate: gleicher Pfad mit <${name}>, Basis-CODEOWNERS deckt /services/ -> kein codeowners-unguarded`, () => {
+    const p = `services/a${x}b/x.ts`;
+    const { repo, diffPaths } = repoWithChange(
+      { ".devloop/tier-map.json": JSON.stringify({ T3: ["services/**"], default: "T1" }), CODEOWNERS: "/services/ @alice\n" },
+      [p],
+    );
+    const r = runVerify(repo, { headRef: "devloop/x", diffPaths });
+    expect(String(r.out.reason ?? "")).not.toMatch(/codeowners-unguarded/);
+  });
+}
