@@ -1,25 +1,13 @@
-// Spec-amend classifier (#27): is a change between two spec.md versions a pure documentation
-// addendum ("nachtrag": only lines inside "Bekannte Grenzen" / "Folge-Issues" sections, no REQ
-// definition, no heading change) or a requirement change ("anforderung", stops for review)?
-// Conservative by design: anything not provably an addendum is "anforderung".
-const HEADING = /^#{1,6} /;
+import { HEADING, nachtragFlags } from "./spec-sections.js";
 const REQ_DEF = /^\s*- \*\*REQ-[A-Z0-9]+-\d+\*\*/;
-const NACHTRAG_TITEL = /^(Bekannte Grenzen|Folge-Issues)/;
 // Non-blank lines of a version with 1-based numbers and nachtrag-section membership.
 function parse(src) {
+    const texts = src.split("\n").map((raw) => raw.replace(/\r$/, ""));
+    const flags = nachtragFlags(texts);
     const out = [];
-    let level = null; // heading level of the enclosing nachtrag section
-    src.split("\n").forEach((raw, i) => {
-        const text = raw.replace(/\r$/, "");
-        if (HEADING.test(text)) {
-            const l = text.indexOf(" ");
-            if (level !== null && l <= level)
-                level = null;
-            if (level === null && NACHTRAG_TITEL.test(text.slice(l + 1).trim()))
-                level = l;
-        }
+    texts.forEach((text, i) => {
         if (text.trim() !== "")
-            out.push({ nr: i + 1, text, inNachtrag: level !== null });
+            out.push({ nr: i + 1, text, inNachtrag: flags[i] });
     });
     return out;
 }

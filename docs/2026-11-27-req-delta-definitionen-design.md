@@ -49,7 +49,10 @@ enthalten nie Definitionen (wie `spec-amend-class`).
 - **Nachtrags-Abschnitt:** wie in REQ-NACHTRAG (#27): Überschrift beginnt mit „Bekannte Grenzen“
   oder „Folge-Issues“, Unterabschnitte erben.
 - **Definitionsblock:** die Definitionszeile und alle folgenden Zeilen bis vor die nächste
-  Leerzeile, Überschrift, Definitionszeile oder einen nicht eingerückten Listenpunkt.
+  Überschrift, Definitionszeile, einen nicht eingerückten Listenpunkt oder eine Leerzeile, auf die
+  als nächste nicht leere Zeile eine **nicht eingerückte** Zeile folgt. Leerzeilen mit eingerückter
+  Fortsetzung danach (weitere Absätze eines Listenpunkts, z. B. „Nachschärfung …“) gehören zum
+  Block.
 - **Kriteriumstext:** der Definitionsblock ab nach der ID (ohne optionales `:`/`-`/`—` direkt nach
   der ID), Whitespace normalisiert.
 
@@ -85,6 +88,11 @@ Unit-Tests gegen `reqDelta`, ein CLI-Test gegen `dist/`, ein Test auf echten Spe
 | Fortsetzungszeile eines fetten Kriteriums geändert | `changed` enthält die ID | nur erste Zeile gewertet |
 | Absatzform `**REQ-X-1** *(Contract)*`, Text in der Folgezeile geändert | `changed` | dto. |
 | Fortsetzungszeile eines Kriteriums nennt REQ-X-5 (anderer Text), REQ-X-5 selbst unverändert | REQ-X-5 nicht in `changed` | jede Zeile mit ID gewertet |
+| fetter Listenpunkt mit zweitem, eingerücktem Absatz nach Leerzeile; nur der zweite Absatz ändert sich | `changed` enthält die ID | Block endet an jeder Leerzeile |
+| dto., dritter Absatz nach zwei Leerzeilen | `changed` | dto. |
+| Absatzform: Leerzeile, dann nicht eingerückter Fließtext ändert sich | leeres Delta | Block endet nie an Leerzeile |
+| Listenpunkt, Leerzeile, nicht eingerückter Absatz (kein Listenpunkt) ändert sich | leeres Delta | dto. |
+| Kriterium direkt gefolgt von einer Überschrift, Text unter der Überschrift ändert sich | leeres Delta | Block endet nicht an Überschrift |
 | Spec mit fetter Form, Listenpunkt `- REQ-X-12 macht …` **vor** der Definition, nur der Listenpunkt ändert sich | leeres Delta | schlichte Form trotz fetter Form gewertet; letzte statt erste Definition |
 | Spec nur in schlichter Form (`- REQ-X-1 [When]: …`), Text geändert / REQ entfernt / REQ neu | `changed` / `removed` / `added` | schlichte Form nie gewertet |
 | `` `REQ-X-5-irgendwas.json` `` und `- **`REQ-X-11` (e)**` | keine Definition | ID-Beginn ohne Endprüfung; Backtick zugelassen |
@@ -98,6 +106,8 @@ dokumentiert.
 
 ## Bekannte Grenzen (dokumentiert, keine eigene Runde)
 
+- **Eingerückter Codeblock nach Absatzform:** Ein mit vier Leerzeichen eingerückter Codeblock nach
+  einer Leerzeile hinter einem fetten Absatz-Kriterium (ohne Listenpunkt) zählt zum Block.
 - **Heuristik nach Form:** Eine Nennung in fetter Form am Zeilenanfang (`**REQ-X-1** wird …`) außerhalb
   der Nachtrags-Abschnitte gilt als Definition. Mit REQ-REQDEF-4 überschreibt sie keine frühere
   Definition, kann aber eine fehlende vortäuschen.
