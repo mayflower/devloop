@@ -81,7 +81,7 @@ entscheidet der Mensch beim Merge (abgenommen 2026-11-27).
 ## Umsetzung (Skizze, nicht bindend)
 
 - Kern `src/core/spec-amend.ts`: Zeilen-Diff (LCS reicht, Specs sind klein), Abschnittszuordnung je
-  Zeile über die letzte Überschrift, `reqDelta` wiederverwenden.
+  Zeile über die letzte Überschrift.
 - CLI `src/cli/spec-amend-class.ts`, Muster wie `req-delta`.
 - Versionssprung **v0.12.0** (neue CLI, neue Kettenregel).
 
@@ -97,7 +97,7 @@ CLI-Tests gegen `dist/` mit echten Spec-Dateien im Temp-Verzeichnis.
 | neue Grenze nennt `REQ-X-4` im Fließtext | `nachtrag` | jede `REQ-`-Nennung gilt als Definition |
 | neue Zeile `- **REQ-X-9** …` unter „Bekannte Grenzen“ | `anforderung`, Grund nennt die Zeile | Definitions-Prüfung entfernt |
 | Grenze gestrichen (Zeile weg, kein `REQ-`) | `nachtrag` | jede weggefallene Zeile gilt als Anforderungsänderung |
-| Wortlaut eines REQ geändert | `anforderung` | `req-delta` nicht ausgewertet |
+| Wortlaut eines REQ geändert | `anforderung` | Abschnitt „Anforderungen“ als Nachtrags-Abschnitt gewertet |
 | Zeile in „Begriffe“ oder „Detektoren“ geändert | `anforderung` | Abschnittsprüfung entfernt |
 | REQ-Zeile aus „Anforderungen“ nach „Bekannte Grenzen“ verschoben | `anforderung` | weggefallene Zeilen dem neuen Stand zugeordnet |
 | Überschrift „Detektoren“ in „Bekannte Grenzen 2“ umbenannt | `anforderung` | Überschriften-Prüfung entfernt |
