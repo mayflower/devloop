@@ -14,13 +14,26 @@ const actionYml = readFileSync(join(actionDir, "action.yml"), "utf8");
 
 function stepRun(namePrefix: string): string {
   const lines = actionYml.split("\n");
-  const i = lines.findIndex((l) => l.trim().startsWith("- name: " + namePrefix));
-  if (i < 0) throw new Error("step not found: " + namePrefix);
-  const r = lines.findIndex((l, k) => k > i && /^\s+run: \|\s*$/.test(l));
-  if (r < 0) throw new Error("no block run: for step " + namePrefix);
-  const runIndent = lines[r].length - lines[r].trimStart().length;
+  const hits = lines.map((l, k) => (l.trim().startsWith("- name: " + namePrefix) ? k : -1)).filter((k) => k >= 0);
+  if (hits.length !== 1) throw new Error(`step "${namePrefix}": ${hits.length} Treffer in action.yml (erwartet genau 1)`);
+  const i = hits[0];
+  const stepIndent = lines[i].length - lines[i].trimStart().length;
+  // nur innerhalb dieses Schritts suchen, nie den Nachbarschritt greifen
+  let end = lines.length;
+  for (let k = i + 1; k < lines.length; k++) {
+    const l = lines[k];
+    if (l.trim() !== "" && l.length - l.trimStart().length <= stepIndent && !l.trim().startsWith("#")) {
+      end = k;
+      break;
+    }
+  }
+  const r = lines.findIndex((l, k) => k > i && k < end && /^\s+run:/.test(l));
+  if (r < 0) throw new Error("kein run: im Schritt " + namePrefix);
+  const m = lines[r].match(/^(\s+)run:\s*(.*)$/)!;
+  if (m[2].trim() !== "|") return m[2];
+  const runIndent = m[1].length;
   const out: string[] = [];
-  for (let k = r + 1; k < lines.length; k++) {
+  for (let k = r + 1; k < end; k++) {
     const l = lines[k];
     const ind = l.length - l.trimStart().length;
     if (l.trim() !== "" && ind <= runIndent) break;
@@ -127,7 +140,7 @@ function runSteps(s: Setup, shellFlags: string[] = ["-eo", "pipefail"]) {
     GH_TOKEN: "stub",
   };
   const run = (script: string) => spawnSync("bash", ["--noprofile", "--norc", ...shellFlags, "-c", script], { cwd: s.work, env, encoding: "utf8" });
-  const fetch = run(`git fetch origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"`);
+  const fetch = run(stepRun("Fetch base"));
   if (fetch.status !== 0) throw new Error("fetch: " + fetch.stderr);
   const tier = run(stepRun("Compute the AUTHORITATIVE tier"));
   let tierJson: any = {};
@@ -136,8 +149,7 @@ function runSteps(s: Setup, shellFlags: string[] = ["-eo", "pipefail"]) {
   } catch {
     /* Schritt fehlgeschlagen */
   }
-  // Der Drift-Schritt hat ein einzeiliges run:; stepRun() findet nur Block-Skripte und griff auf das run: des Folgeschritts.
-  const drift = tier.status === 0 ? run(`node "$GITHUB_ACTION_PATH/../../../dist/cli/check-codeowners.js" .`) : undefined;
+  const drift = tier.status === 0 ? run(stepRun("Drift guard")) : undefined;
   const verify = tier.status === 0 ? run(stepRun("Verify HUMAN approval")) : undefined;
   return { tier, tierJson, drift, verify };
 }
@@ -208,4 +220,15 @@ test("[REQ-COBASE-3] checkout-Clone: Basis ohne CODEOWNERS (mit Config), PR legt
   const r = runSteps(s);
   expect(r.verify!.status).toBe(1);
   expect(r.verify!.stdout).toMatch(/codeowners-unguarded/);
+});
+
+test("[REQ-COBASE-6] checkout-Clone: HEAD-tier-map mit ungedecktem T2-Glob -> Drift-Schritt rot (aus action.yml ausgefuehrt)", () => {
+  const s = setup({
+    baseFiles: { ".devloop/tier-map.json": T2_MAP, CODEOWNERS: COVER + "/services/ @alice\n" },
+    change: (w) => write(w, ".devloop/tier-map.json", JSON.stringify({ T2: ["services/**", "billing/**"], T1: ["**"] })),
+  });
+  const r = runSteps(s);
+  expect(r.tier.status).toBe(0);
+  expect(r.drift!.status).toBe(1);
+  expect(r.drift!.stdout).toContain("billing/**");
 });

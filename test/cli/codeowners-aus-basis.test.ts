@@ -145,12 +145,13 @@ test("[REQ-COBASE-1] Grund nennt jeden ungedeckten Pfad", () => {
 test("[REQ-COBASE-1] mehrere review-pflichtige Pfade, nur einer ungedeckt -> nur dieser wird genannt", () => {
   const map = JSON.stringify({ T3: ["auth/**"], T2: ["services/**"], T1: ["**"] });
   const repo = makeRepo({ ".devloop/tier-map.json": map, CODEOWNERS: "/.devloop/ @alice\n/auth/ @sec\n" });
-  branchWith(repo, { "services/a.ts": "x\n", "auth/login.ts": "x\n" });
-  const r = run(repo, { tier: "T3", diffPaths: ["auth/login.ts", "services/a.ts"] });
+  branchWith(repo, { "services/a.ts": "x\n", "auth/login.ts": "x\n", "README.md": "y\n" });
+  const r = run(repo, { tier: "T3", diffPaths: ["auth/login.ts", "services/a.ts", "README.md"] });
   expect(r.status).toBe(1);
   expect(r.out.reason).toMatch(/^codeowners-unguarded:/);
   expect(r.out.reason).toContain("services/a.ts");
   expect(r.out.reason).not.toContain("auth/login.ts");
+  expect(r.out.reason).not.toContain("README.md"); // ungedeckter T1-Pfad ist nicht review-pflichtig
 });
 
 test("[REQ-COBASE-1] T3-Pfad ungedeckt, T2-Pfad gedeckt -> T3-Pfad wird genannt (T3 ist review-pflichtig)", () => {
@@ -207,6 +208,15 @@ test("[REQ-COBASE-1] ohne baseRef greift das Gate nicht (lokaler Aufruf): T2 ohn
   expect(r.status).toBe(0);
   expect(r.out.pending).toBe(true);
   expect(r.stdout).not.toMatch(/codeowners-unguarded/);
+});
+
+test("[REQ-COBASE-1] Basis deckt /services/, Diff services/a.ts (T2) + README.md (T1, ungedeckt) -> kein codeowners-unguarded (pro Pfad, nicht pro Gesamttier)", () => {
+  const repo = makeRepo({ CODEOWNERS: "/.devloop/ @alice\n/services/ @alice\n" });
+  branchWith(repo, { "services/a.ts": "x\n", "README.md": "y\n" });
+  const r = run(repo, { diffPaths: ["services/a.ts", "README.md"] });
+  expect(r.stdout).not.toMatch(/codeowners-unguarded/);
+  expect(r.status).toBe(0);
+  expect(r.out.pending).toBe(true);
 });
 
 // ---------- Basis-tier-map: kein Kandidat / unlesbar ----------
