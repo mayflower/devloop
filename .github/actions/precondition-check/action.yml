@@ -33,7 +33,7 @@ runs:
         set -o pipefail
         DIFF=$(git diff --no-renames -z --name-only "origin/$BASE"...HEAD | jq -Rs 'split("\u0000") | map(select(length>0))')
         jq -n --argjson touched "$DIFF" --arg baseRef "origin/$BASE" '{touched:$touched, repo:".", baseRef:$baseRef}' \
-          | node "$GITHUB_ACTION_PATH/../../../dist/cli/derive-tier.js" > tier.json
+          | node "$GITHUB_ACTION_PATH/../../../dist/cli/derive-tier.js" > tier.json || exit 1
         cat tier.json
 
     - name: Drift guard — tier-map T2/T3 paths covered by CODEOWNERS (§9)
