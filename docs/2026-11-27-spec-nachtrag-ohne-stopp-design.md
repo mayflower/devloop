@@ -123,3 +123,15 @@ Menschen, kein Quelltext-Wächter.
   harte Grenze. Ein CI-Check `spec-amend-class` auf `devloop/<slug>` wäre ein Folge-Issue.
 - **Status- und Ist-Zustand-Zeilen** zählen nicht als Nachtrag. Ein nachgezogener Ist-Zustand stoppt
   weiter; das ist der konservative Teil der Entscheidung.
+- **REQ-Definitionen nur in kanonischer Form:** Nur `- **REQ-<CTX>-<nr>**` gilt als REQ-Definition.
+  Ein neues Kriterium unter „Bekannte Grenzen“ in anderer Form (ohne Fettung, mit `*`- oder
+  Nummern-Aufzählung, Doppelpunkt in der Fettung) läuft als Nachtrag durch, obwohl `req-delta` es
+  als neues REQ meldet. `devloop-specify` schreibt die kanonische Form vor; alle REQs in `docs/`
+  nutzen sie. Ein Abgleich mit `req-delta` (added/removed nicht leer ⇒ `anforderung`) wäre ein
+  Folge-Issue.
+- **Exotisches Markdown:** Setext-Überschriften und eingerückte `#`-Überschriften (1–3 Leerzeichen)
+  gelten nicht als Überschrift; neu angelegt laufen sie als Nachtrag durch. `#`-Zeilen in
+  Code-Fences gelten als Überschrift; das kostet höchstens einen Fehlalarm.
+- **`req-delta` liest REQ-Nennungen in Grenzen als REQ-Änderung:** Seine Map behält die letzte Zeile,
+  die eine ID nennt. Beim Nachtrag aus #13 meldet es `changed: ["REQ-CFGBASE-4"]`. Im Nachtragsweg
+  läuft `spec-to-tests` nicht, deshalb ohne Folgen hier; Folge-Issue zu `req-delta`.
