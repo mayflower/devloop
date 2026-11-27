@@ -2,7 +2,7 @@
 
 > devloop, Issue #27. Heute stoppt jede spätere Spec-Änderung die Kette, auch eine neue Zeile in
 > „Bekannte Grenzen“. In den Ketten zu #4, #12, #19/#20, #23 und #13 waren genau diese Stopps die
-> teuren. Status: **Entwurf**, zur Abnahme.
+> teuren. Status: **abgenommen** (2026-11-27), mit REQ-Nennungen in Grenzen als Nachtrag.
 
 ## Ist-Zustand (main, f0b0bc1)
 
@@ -28,8 +28,9 @@ Zwei Klassen, und eine deterministische CLI entscheidet die Klasse, nicht der Ag
 
 Der Detektor ist bewusst **konservativ**. Was er nicht sicher als Nachtrag erkennt, gilt als
 Anforderungsänderung und stoppt. Ein Fehlalarm kostet einen Stopp wie heute; ein Durchrutscher
-kostet ein aufgeweichtes REQ. Deshalb fällt jede Zeile, die ein REQ nennt, in die stopppflichtige
-Klasse, auch wenn sie nur in „Bekannte Grenzen“ steht.
+kostet ein aufgeweichtes REQ. Eine Grenze darf ein REQ **nennen** (etwa „gilt dann als Erstaufnahme
+(REQ-CFGBASE-4)“), aber keines **definieren**. Ob eine REQ-nennende Grenze das REQ aufweicht,
+entscheidet der Mensch beim Merge (abgenommen 2026-11-27).
 
 ## Begriffe
 
@@ -38,11 +39,14 @@ Klasse, auch wenn sie nur in „Bekannte Grenzen“ steht.
   manuellen Kette ist es der Commit, auf dem die Abnahme erfolgte.
 - **Nachtrags-Abschnitt:** ein Abschnitt (`##` oder tiefer), dessen Überschrift mit „Bekannte
   Grenzen“ oder „Folge-Issues“ beginnt. Unterabschnitte erben die Zugehörigkeit.
+- **REQ-Definition:** eine Zeile, die (nach führenden Leerzeichen) mit `- **REQ-<CTX>-<nr>**`
+  beginnt, also ein EARS-Kriterium anlegt. Eine Zeile, die eine REQ-ID nur im Fließtext nennt, ist
+  keine REQ-Definition.
 - **Geänderte Zeile:** eine Zeile, die im zeilenweisen Diff zwischen abgenommenem Stand und neuem
   Stand hinzukommt oder wegfällt. Leerzeilen zählen nicht.
 - **Doku-Nachtrag:** eine Spec-Änderung, bei der jede geänderte Zeile in einem Nachtrags-Abschnitt
   liegt (im alten Stand für weggefallene, im neuen für hinzugekommene Zeilen), keine geänderte Zeile
-  `REQ-` enthält, keine Überschrift hinzukommt, wegfällt oder sich ändert und `req-delta` leer ist.
+  eine REQ-Definition ist und keine Überschrift hinzukommt, wegfällt oder sich ändert.
 - **Anforderungsänderung:** jede andere Spec-Änderung.
 
 ## Anforderungen (EARS)
@@ -54,8 +58,9 @@ Klasse, auch wenn sie nur in „Bekannte Grenzen“ steht.
 - **REQ-NACHTRAG-2** *(ubiquitous)* — Die Klasse soll `nachtrag` genau dann sein, wenn die Änderung
   ein Doku-Nachtrag nach den Begriffen oben ist, und `unveraendert`, wenn es keine geänderte Zeile
   gibt.
-- **REQ-NACHTRAG-3** *(unwanted)* — Wenn eine geänderte Zeile in einem Nachtrags-Abschnitt `REQ-`
-  enthält, soll die Klasse `anforderung` sein (Gegenprobe gegen eine Grenze, die ein REQ aufweicht).
+- **REQ-NACHTRAG-3** *(unwanted)* — Wenn eine geänderte Zeile in einem Nachtrags-Abschnitt eine
+  REQ-Definition ist, soll die Klasse `anforderung` sein (kein neues oder gestrichenes Kriterium
+  über „Bekannte Grenzen“). Eine geänderte Zeile, die eine REQ-ID nur nennt, bleibt `nachtrag`.
 - **REQ-NACHTRAG-4** *(unwanted)* — Wenn eine Überschrift hinzukommt, wegfällt oder umbenannt wird,
   soll die Klasse `anforderung` sein (kein Verschieben von Inhalt in einen Nachtrags-Abschnitt per
   Umbenennung).
@@ -89,7 +94,8 @@ CLI-Tests gegen `dist/` mit echten Spec-Dateien im Temp-Verzeichnis.
 | neue Zeile unter „Bekannte Grenzen“ ohne `REQ-` | `nachtrag`, `prBody` enthält die Zeile wörtlich | Klasse immer `anforderung` |
 | neue Zeile unter „Folge-Issues“ | `nachtrag` | nur „Bekannte Grenzen“ erlaubt |
 | Zeile in Unterabschnitt `###` von „Bekannte Grenzen“ | `nachtrag` | Zuordnung nur über `##` |
-| neue Grenze nennt `REQ-X-4` | `anforderung`, Grund nennt die Zeile | `REQ-`-Prüfung entfernt |
+| neue Grenze nennt `REQ-X-4` im Fließtext | `nachtrag` | jede `REQ-`-Nennung gilt als Definition |
+| neue Zeile `- **REQ-X-9** …` unter „Bekannte Grenzen“ | `anforderung`, Grund nennt die Zeile | Definitions-Prüfung entfernt |
 | Grenze gestrichen (Zeile weg, kein `REQ-`) | `nachtrag` | jede weggefallene Zeile gilt als Anforderungsänderung |
 | Wortlaut eines REQ geändert | `anforderung` | `req-delta` nicht ausgewertet |
 | Zeile in „Begriffe“ oder „Detektoren“ geändert | `anforderung` | Abschnittsprüfung entfernt |
@@ -98,7 +104,7 @@ CLI-Tests gegen `dist/` mit echten Spec-Dateien im Temp-Verzeichnis.
 | nur Leerzeilen geändert | `unveraendert` | Leerzeilen zählen |
 | identische Dateien | `unveraendert` | — |
 | alte Datei fehlt | Exit 2, stdout leer | Fehler als `unveraendert` geschluckt |
-| Realfall #13: Spec vor und nach dem F3-Nachtrag (nennt REQ-CFGBASE-4) | `anforderung` | — (der F3-Nachtrag hätte also weiter gestoppt) |
+| Realfall #13: Spec vor und nach dem F3-Nachtrag (nennt REQ-CFGBASE-4) | `nachtrag` | — (Realfall) |
 
 Mutationen werden im Implementierungs-PR gefahren und mit Ergebnis in der PR-Beschreibung
 dokumentiert. REQ-NACHTRAG-7 und 8 sind Doku; ihr Detektor ist die Abnahme des Diffs durch den
@@ -106,8 +112,8 @@ Menschen, kein Quelltext-Wächter.
 
 ## Bekannte Grenzen (dokumentiert, keine eigene Runde)
 
-- **Aufweichen ohne REQ-Nennung:** Eine Grenze wie „X wird nicht geprüft“ ohne `REQ-` läuft als
-  Nachtrag durch. Gegenprobe ist der Merge-Blick: Die Zeile steht wörtlich unter der festen
+- **Aufweichen über eine Grenze:** Eine Grenze wie „X wird nicht geprüft“ läuft als Nachtrag durch,
+  auch wenn sie ein REQ nennt. Gegenprobe ist der Merge-Blick: Die Zeile steht wörtlich unter der festen
   Überschrift, und CI verlangt für jeden PR mit Spec-Pfad ein menschliches Approval (#4).
 - **Missbrauch als Ablage:** Ein Agent kann eine unbequeme Lücke als Grenze eintragen, statt sie zu
   beheben. Heute fängt das der Stopp, danach nur der Merge-Blick. Die Abbruchbedingung der
