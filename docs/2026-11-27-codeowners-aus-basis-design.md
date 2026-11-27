@@ -3,7 +3,7 @@
 > devloop, Issue #14. Der Drift-Wächter `check-codeowners` liest CODEOWNERS und tier-map aus dem
 > PR-HEAD. GitHub verlangt das CODEOWNER-Review aber nach der CODEOWNERS der **Basis**. Ein PR,
 > der sich die Deckung selbst einträgt, besteht den Wächter, ohne dass GitHub ein Review eines
-> Owners verlangt. Status: **Entwurf**, zur Abnahme.
+> Owners verlangt. Status: **abgenommen** (2026-11-27), zwei Prüfungen (HEAD-Drift plus Basis-Wirksamkeit).
 
 ## Ist-Zustand (main, 2ae0a1f)
 
