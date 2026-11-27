@@ -70,3 +70,7 @@ dokumentiert.
   richtige Tier; der bisherige Wert war Zufall.
 - **GitHubs CODEOWNERS-Matching** für Pfade mit Zeilenende ist nicht gemessen. devloop behandelt
   sie wie jedes andere Zeichen.
+- **Testpfad, der auf ein Zeilenende endet** (`x.test.ts<LF>`): `TEST_FILE` in `verify-unskip`
+  (`/\.(test|spec)\.[cm]?[jt]sx?$/`, kein Glob) erkennt ihn nicht als Testdatei. vitest sammelt
+  solche Dateien mit dem Default-`include` nicht; mit eigenem `include` wie `**/*.test.*` laufen sie
+  ungeprüft. Variante von #21, kein Glob-Gate (Kritiker #15, H1).
