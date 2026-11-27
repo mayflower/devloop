@@ -2,17 +2,59 @@
 // between two spec.md versions. Lets spec-to-tests touch exactly the affected REQs (surgical
 // re-derivation) instead of the whole feature (design: spec-change loopback, §5.1).
 //
-// One criterion per line (the EARS convention): a line carrying a REQ id maps that id to its
-// criterion text (everything after the id, minus an optional ":" / "-" / "—" separator).
-// Comparison is whitespace-normalised.
-const REQ_LINE = /\b(REQ-[A-Z0-9]+-\d+)\b\s*[:\-—]?\s*(.*)$/;
+// Only REQ *definitions* count (#30), recognised by form, not by a bare mention:
+//  - bold definition: unindented line, optional "- "/"* ", then "**" directly followed by the id;
+//  - plain definition: unindented line starting with the id (optional "- "/"* "), or a heading
+//    "# REQ-…". Plain lines only count in a spec without any bold definition;
+//  - never inside "Bekannte Grenzen" / "Folge-Issues" sections (shared with spec-amend-class).
+// A criterion's text is its whole definition block (definition line + continuation lines up to
+// the next heading, definition or unindented list item, or a blank line followed by an unindented
+// line; indented paragraphs after a blank line belong to the block), whitespace-normalised.
+// If an id is defined more than once, the first definition wins.
+import { HEADING, nachtragFlags } from "./spec-sections.js";
+const ID = String.raw `(REQ-[A-Z0-9]+-\d+)(?![-A-Za-z0-9])`;
+const BOLD_DEF = new RegExp(String.raw `^(?:[-*] )?\*\*${ID}`);
+const PLAIN_DEF = new RegExp(String.raw `^(?:(?:[-*] )?|#{1,6} )${ID}`);
+const LIST_ITEM = /^[-*] /;
 const normalize = (s) => s.trim().replace(/\s+/g, " ");
 function parseReqs(spec) {
+    const lines = spec.split("\n").map((l) => l.replace(/\r$/, ""));
+    const nachtrag = nachtragFlags(lines);
+    const defs = [];
+    lines.forEach((line, i) => {
+        if (nachtrag[i])
+            return;
+        const b = line.match(BOLD_DEF);
+        if (b)
+            return void defs.push({ id: b[1], bold: true, start: i, rest: line.slice(b[0].length) });
+        const p = line.match(PLAIN_DEF);
+        if (p)
+            defs.push({ id: p[1], bold: false, start: i, rest: line.slice(p[0].length) });
+    });
+    const useBold = defs.some((d) => d.bold);
+    // Only definitions of the active form end a block; plain lines in a bold spec are mentions.
+    const isDefStart = new Set(defs.filter((d) => d.bold === useBold).map((d) => d.start));
     const reqs = new Map();
-    for (const line of spec.split("\n")) {
-        const m = line.match(REQ_LINE);
-        if (m)
-            reqs.set(m[1], normalize(m[2]));
+    for (const d of defs) {
+        if (d.bold !== useBold || reqs.has(d.id))
+            continue;
+        const parts = [d.rest.replace(/^\s*[:\-—]?/, "")];
+        for (let j = d.start + 1; j < lines.length; j++) {
+            const l = lines[j];
+            if (l.trim() === "") {
+                // A blank line ends the block unless the next non-blank line is indented.
+                let k = j + 1;
+                while (k < lines.length && lines[k].trim() === "")
+                    k++;
+                if (k >= lines.length || !/^[ \t]/.test(lines[k]))
+                    break;
+                continue;
+            }
+            if (HEADING.test(l) || isDefStart.has(j) || LIST_ITEM.test(l))
+                break;
+            parts.push(l);
+        }
+        reqs.set(d.id, normalize(parts.join("\n")));
     }
     return reqs;
 }

@@ -30,7 +30,7 @@ Aus der **reviewten** `spec.md` (+ Contract), **ohne die von `spec-to-tests` erz
 ```
 node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/req-delta.js <alte-spec> <neue-spec>   # {added, changed, removed}
 ```
-(alte Spec: `git show <base>:<spec.md>`). Dann je Fall:
+(alte Spec: `git show <base>:<spec.md>`). Als Definition zählen nur Zeilen am Zeilenanfang: `- **REQ-…**`, `* **REQ-…**` oder `**REQ-…**` ohne Listenpunkt (fett) bzw., in einer Spec ganz ohne fette Definition, `- REQ-…` oder `# REQ-…` (schlicht). Zum Kriterium gehören die Fortsetzungszeilen und eingerückte Folgeabsätze nach einer Leerzeile; es endet an einer Leerzeile mit nicht eingerückter Folgezeile, an einem nicht eingerückten Listenpunkt, an einer Überschrift oder an der nächsten Definition; Nennungen im Fließtext und Zeilen in „Bekannte Grenzen“/„Folge-Issues“ zählen nicht. Bei mehrfach definierter ID gilt die erste Definition. Jede Änderung im Block (auch Implementierungshinweise, „Quelle: …“, Detektor-Absätze) steht als `changed` und löst Neuableitung aus. Hängt ein Kriterium nur per Verweis von einem anderen ab, ändert sich sein Text nicht und es steht nicht in `changed` — das prüfst du selbst. Dann je Fall:
 - **added** → neue Invariante, `.skip`'t.
 - **changed** → die Invariante gleicher REQ-ID ändern **und `.skip` wieder setzen**.
 - **removed** → Invariante entfernen (sonst verwaiste REQ-Referenz → rotes Trace-Gate).
