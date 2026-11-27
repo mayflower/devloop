@@ -8,7 +8,7 @@ import { dirname, join, relative } from "node:path";
 import { resolveTierMapPath } from "./tier-map.js";
 import { tierGlobs } from "./tier.js";
 import { parseCodeowners, findUncoveredTierGlobs, codeownersCovers } from "./codeowners.js";
-import { uncoveredSpecPaths } from "./spec-change.js";
+import { CODEOWNERS_PATHS, uncoveredSpecPaths } from "./spec-change.js";
 // Convert a tier glob to a CODEOWNERS path: `services/**` -> `/services/` (anchored dir),
 // `**/auth/**` -> `auth/` (matches anywhere). A skeleton line for the human to assign owners.
 function tierGlobToCodeownersPath(glob) {
@@ -113,7 +113,7 @@ export function initRepo(targetRepo, ciTemplate, opts = {}) {
     const tierMapPath = resolveTierMapPath(targetRepo);
     if (tierMapPath) {
         const t2t3 = tierGlobs(JSON.parse(readFileSync(tierMapPath, "utf8")), ["T2", "T3"]);
-        const coRel = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"].find((r) => existsSync(join(targetRepo, r)));
+        const coRel = CODEOWNERS_PATHS.find((r) => existsSync(join(targetRepo, r)));
         if (!coRel) {
             const owners = [...new Set(t2t3.map(tierGlobToCodeownersPath))].map((p) => `${p} @OWNER`);
             // Config-Pfade (#13): /.devloop/ plus a tier-map outside it, so a config change needs a review.

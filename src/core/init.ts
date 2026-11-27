@@ -9,7 +9,7 @@ import { dirname, join, relative } from "node:path";
 import { resolveTierMapPath } from "./tier-map.js";
 import { tierGlobs, type TierMapInput } from "./tier.js";
 import { parseCodeowners, findUncoveredTierGlobs, codeownersCovers } from "./codeowners.js";
-import { uncoveredSpecPaths } from "./spec-change.js";
+import { CODEOWNERS_PATHS, uncoveredSpecPaths } from "./spec-change.js";
 
 // Convert a tier glob to a CODEOWNERS path: `services/**` -> `/services/` (anchored dir),
 // `**/auth/**` -> `auth/` (matches anywhere). A skeleton line for the human to assign owners.
@@ -164,7 +164,7 @@ export function initRepo(
       JSON.parse(readFileSync(tierMapPath, "utf8")) as TierMapInput,
       ["T2", "T3"],
     );
-    const coRel = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"].find((r) =>
+    const coRel = CODEOWNERS_PATHS.find((r) =>
       existsSync(join(targetRepo, r)),
     );
     if (!coRel) {
