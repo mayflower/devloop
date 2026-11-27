@@ -84,6 +84,9 @@ Danach **von Hand** (das ist der Anker, der Selbst-Freigabe verhindert):
    > Approval-Gültigkeit immer), erzwingt das „muss approved sein" aber **nicht** selbst — das tut CODEOWNERS.
    > **Erzwungen** wird die Alignment-Pflicht vom **Drift-Wächter** `check-codeowners` (Required Check, im
    > CI-Template): er failt, wenn ein T2/T3-tier-map-Pfad nicht von CODEOWNERS gedeckt ist (oder CODEOWNERS fehlt).
+   > **Suchreihenfolge (seit v0.14.0, wie GitHub):** `.github/CODEOWNERS`, `CODEOWNERS`, `docs/CODEOWNERS`; nur die erste
+   > existierende Datei zählt (keine Vereinigung), ihr Pfad steht in `codeownersPath`. Repos mit mehreren CODEOWNERS-Dateien
+   > können rot werden, wenn die `.github/`-Datei T2/T3-Pfade nicht deckt; Reparatur: ergänzen oder die überzählige löschen.
    >
    > **Zwei Prüfungen (seit v0.13.0):** (A) Der Drift-Wächter `check-codeowners` prüft tier-map und CODEOWNERS des
    > **PR-HEAD** und schützt `main` vor einer Lücke nach dem Merge. (B) `verify-review` prüft die **Wirksamkeit gegen die
