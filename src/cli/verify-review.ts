@@ -7,7 +7,8 @@
 // Spec-Aenderungen (REQ-SPECGATE-*) umgehen die T0/T1-Abkuerzung nicht und verlangen Basis-CODEOWNERS-Deckung.
 // Mit baseRef kommen protectedGlobs und botLogins aus der Basis (Rueckfall: Arbeitsbaum, dann stdin;
 // REQ-CFGBASE-2..4), und Config-Aenderungen (.devloop/**, tier-map) verhalten sich wie Spec-Aenderungen
-// (REQ-CFGBASE-5/6), ausser bei Erstaufnahme.
+// (REQ-CFGBASE-5/6), ausser bei Erstaufnahme. Mit baseRef gilt zusaetzlich das CODEOWNERS-Gate
+// (REQ-COBASE-1..4): T2/T3-Diff-Pfade nach Basis-tier-map muessen von der Basis-CODEOWNERS gedeckt sein.
 // reviews come from `gh api repos/{owner}/{repo}/pulls/{n}/reviews`.
 
 import { evaluateApproval, type Review, type ApprovalContext } from "../core/review.js";
@@ -27,6 +28,8 @@ import {
   isInitialAdoption,
   readConfigList,
 } from "../core/config-change.js";
+import { readBaseTierMap } from "../core/tier-map.js";
+import { deriveTier } from "../core/tier.js";
 import { readStdin } from "./_stdin.js";
 
 interface Request extends ApprovalContext {
@@ -137,6 +140,44 @@ if (req.baseRef) {
       if (uncovered.length > 0) {
         fail(
           `config-unguarded: Config-Pfade ohne CODEOWNERS-Deckung in der Basis ${req.baseRef}` +
+            `${owners === null ? " (keine CODEOWNERS gefunden)" : ""}: ${uncovered.join(", ")}`,
+        );
+      }
+    }
+  }
+}
+
+// 1d. CODEOWNERS-Wirksamkeit gegen die Basis (REQ-COBASE-1..4, 7): Review-pflichtige Pfade (Pfad-Tier
+// T2/T3 nach der Basis-tier-map) muessen von der Basis-CODEOWNERS gedeckt sein, sonst verlangt GitHub
+// kein Owner-Review. Nur mit baseRef; Erstaufnahme und Basis ohne tier-map sind ausgenommen. Hart, nie pending.
+// Die Erstaufnahme-Ausnahme ist Verteidigung in der Tiefe: Alle tier-map-Kandidaten sind Config-Pfade,
+// bei Erstaufnahme ist readBaseTierMap daher immer null (gemessen: Mutante ohne Ausnahme ist aequivalent).
+if (req.baseRef) {
+  let adoption: boolean;
+  let base: ReturnType<typeof readBaseTierMap>;
+  try {
+    adoption = isInitialAdoption(repo, req.baseRef);
+    base = adoption ? null : readBaseTierMap(repo, req.baseRef);
+  } catch (e) {
+    fail(`config-invalid: ${(e as Error).message}`);
+  }
+  if (!adoption && base) {
+    const baseMap = base.map;
+    const gated = diffPaths.filter((p) => {
+      const t = deriveTier([p], baseMap);
+      return t === "T2" || t === "T3";
+    });
+    if (gated.length > 0) {
+      let owners: string | null;
+      try {
+        owners = readBaseCodeowners(repo, req.baseRef);
+      } catch (e) {
+        fail(`codeowners-unguarded: ${(e as Error).message} (Pfade: ${gated.join(", ")})`);
+      }
+      const uncovered = uncoveredByCodeowners(gated, owners);
+      if (uncovered.length > 0) {
+        fail(
+          `codeowners-unguarded: T2/T3-Pfade ohne CODEOWNERS-Deckung in der Basis ${req.baseRef}` +
             `${owners === null ? " (keine CODEOWNERS gefunden)" : ""}: ${uncovered.join(", ")}`,
         );
       }
