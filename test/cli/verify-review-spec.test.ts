@@ -40,7 +40,8 @@ function makeRepo(files: Record<string, string> = {}): string {
 
 const COVER_SPECS = "/specs/ @alice\n";
 
-const baseReq = { prAuthor: "agent-bot", headSha: "abc123", botLogins: ["agent-bot"], tier: "T0", baseRef: "base" };
+// protectedGlobs: ab #13 verlangt verify-review mit baseRef eine Quelle (Basis, Arbeitsbaum oder stdin), sonst config-missing.
+const baseReq = { prAuthor: "agent-bot", headSha: "abc123", botLogins: ["agent-bot"], protectedGlobs: [] as string[], tier: "T0", baseRef: "base" };
 
 function run(repo: string, req: object) {
   const r = spawnSync("node", [cli], {

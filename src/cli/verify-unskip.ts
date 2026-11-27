@@ -5,8 +5,9 @@
 //
 // SCOPE: the seam applies to the tests devloop MANAGES (those `spec-to-tests` derives from a
 // reviewed spec), not to every test file in the repo. The target repo declares them in
-// `.devloop/managed-tests.json` (glob list) — a file inside the protected set, so an agent
-// cannot widen it. No such file => every test file is managed (today's behaviour, fail-closed).
+// `.devloop/managed-tests.json` (glob list) — read from the BASE; changing it is a config change
+// that needs a CODEOWNERS review (verify-review, #13), so an agent cannot widen it on its own.
+// No such file => every test file is managed (today's behaviour, fail-closed).
 // Deliberately NOT branch-name-driven: an agent chooses its own branch name.
 //
 // Usage: verify-unskip <repoPath> <baseRef> [headBranch]   (baseRef e.g. origin/main)
@@ -42,7 +43,7 @@ const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 // The glob list is read from the BASE ref first: the scope that is already on the protected
 // branch decides, so a PR cannot loosen the seam for itself. Only if the file does not exist on
 // base do we fall back to the checkout (a repo adopting the file — that PR necessarily touches
-// `.devloop/**` = the protected set and is already flagged by verify-review).
+// `.devloop/**`, a config change that verify-review handles: review required unless initial adoption).
 const readWorktree = (rel: string): string => {
   try {
     return readFileSync(join(repo, rel), "utf8");

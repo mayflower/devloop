@@ -5,6 +5,9 @@
 // stdin JSON: { reviews, prAuthor, headSha, botLogins?, humanReviewers?, diffPaths?, protectedGlobs?,
 //   tier?, headRef?, baseRef?, repo? }
 // Spec-Aenderungen (REQ-SPECGATE-*) umgehen die T0/T1-Abkuerzung nicht und verlangen Basis-CODEOWNERS-Deckung.
+// Mit baseRef kommen protectedGlobs und botLogins aus der Basis (Rueckfall: Arbeitsbaum, dann stdin;
+// REQ-CFGBASE-2..4), und Config-Aenderungen (.devloop/**, tier-map) verhalten sich wie Spec-Aenderungen
+// (REQ-CFGBASE-5/6), ausser bei Erstaufnahme.
 // reviews come from `gh api repos/{owner}/{repo}/pulls/{n}/reviews`.
 
 import { evaluateApproval, type Review, type ApprovalContext } from "../core/review.js";
@@ -17,6 +20,13 @@ import {
   uncoveredByCodeowners,
   SPEC_GLOBS_PATH,
 } from "../core/spec-change.js";
+import {
+  BOT_LOGINS_PATH,
+  PROTECTED_GLOBS_PATH,
+  configPaths,
+  isInitialAdoption,
+  readConfigList,
+} from "../core/config-change.js";
 import { readStdin } from "./_stdin.js";
 
 interface Request extends ApprovalContext {
@@ -37,18 +47,37 @@ function fail(reason: string): never {
 const req = JSON.parse(await readStdin()) as Request;
 
 const reviews = req.reviews ?? [];
+const repo = req.repo ?? ".";
+
+// 0. Config-Listen aus der Basis (REQ-CFGBASE-2/3/4). Unlesbar = config-invalid (kein Rueckfall),
+// nirgends vorhanden = config-missing. Ohne baseRef gilt nur der stdin-Wert wie bisher.
+let protectedGlobs = req.protectedGlobs;
+let botLogins = req.botLogins;
+if (req.baseRef) {
+  try {
+    const pg = readConfigList(repo, req.baseRef, PROTECTED_GLOBS_PATH);
+    const bl = readConfigList(repo, req.baseRef, BOT_LOGINS_PATH);
+    protectedGlobs = pg?.list ?? req.protectedGlobs;
+    botLogins = bl?.list ?? req.botLogins;
+  } catch (e) {
+    fail(`config-invalid: ${(e as Error).message}`);
+  }
+  const missing = [
+    ...(protectedGlobs === undefined ? [PROTECTED_GLOBS_PATH] : []),
+    ...(botLogins === undefined ? [BOT_LOGINS_PATH] : []),
+  ];
+  if (missing.length > 0) {
+    fail(`config-missing: weder in der Basis ${req.baseRef}, im Arbeitsbaum noch auf stdin: ${missing.join(", ")}`);
+  }
+}
+const approvalCtx: ApprovalContext = { ...req, botLogins };
 
 // 1. Gate-tamper fails ALWAYS, independent of approval state (reward-hacking alarm).
-if (
-  req.diffPaths &&
-  req.protectedGlobs &&
-  touchesProtectedSet(req.diffPaths, req.protectedGlobs)
-) {
+if (req.diffPaths && protectedGlobs && touchesProtectedSet(req.diffPaths, protectedGlobs)) {
   fail("protected-set-touched: the diff edits a guardian/gate config (reward-hacking alarm)");
 }
 
 // 1b. Spec-Aenderung (REQ-SPECGATE-1..7). Config gilt immer (REQ-5): ungueltig = fail-closed.
-const repo = req.repo ?? ".";
 let globs: string[];
 try {
   globs = specGlobs(repo, req.baseRef);
@@ -84,17 +113,48 @@ if (specChange) {
   }
 }
 
+// 1c. Config-Aenderung (REQ-CFGBASE-5/6): kein Abkuerzen, Basis-CODEOWNERS muessen die Pfade decken.
+// Erstaufnahme (Basis ohne jeden Config-Pfad) ist ausgenommen: es gibt nichts zu schuetzen.
+let configChange = false;
+if (req.baseRef) {
+  const cfgPaths = configPaths(diffPaths);
+  if (cfgPaths.length > 0) {
+    let adoption: boolean;
+    try {
+      adoption = isInitialAdoption(repo, req.baseRef);
+    } catch (e) {
+      fail(`config-invalid: ${(e as Error).message}`);
+    }
+    if (!adoption) {
+      configChange = true;
+      let owners: string | null;
+      try {
+        owners = readBaseCodeowners(repo, req.baseRef);
+      } catch (e) {
+        fail(`config-unguarded: ${(e as Error).message} (Config-Pfade: ${cfgPaths.join(", ")})`);
+      }
+      const uncovered = uncoveredByCodeowners(cfgPaths, owners);
+      if (uncovered.length > 0) {
+        fail(
+          `config-unguarded: Config-Pfade ohne CODEOWNERS-Deckung in der Basis ${req.baseRef}` +
+            `${owners === null ? " (keine CODEOWNERS gefunden)" : ""}: ${uncovered.join(", ")}`,
+        );
+      }
+    }
+  }
+}
+
 // 2. Tier gate (§9): T0/T1 auto-merge — no approval required. (Gate-tamper above still applied.)
 // Unknown/absent tier defaults to conservative "T3" (approval required). The authoritative
 // T2/T3 merge block is branch protection's required CODEOWNER review on the high-tier paths;
 // this check additionally validates a present approval (human, on HEAD) and the protected set.
 const tier = req.tier ?? "T3";
-if (!specChange && (tier === "T0" || tier === "T1")) {
+if (!specChange && !configChange && (tier === "T0" || tier === "T1")) {
   process.stdout.write(JSON.stringify({ ok: true, tier, note: "tier T0/T1: no approval required (§9)" }) + "\n");
   process.exit(0);
 }
 
-const status = evaluateApproval(reviews, req);
+const status = evaluateApproval(reviews, approvalCtx);
 if (status === "ok") {
   process.stdout.write(JSON.stringify({ ok: true }) + "\n");
   process.exit(0);
