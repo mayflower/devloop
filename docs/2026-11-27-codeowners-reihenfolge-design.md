@@ -72,3 +72,14 @@ dokumentiert.
   dort schon heute hat. Reparatur: die `.github/`-Datei ergänzen oder die überzählige löschen.
 - **Was GitHub als existierende Datei zählt** (Symlink, Verzeichnis, leere Datei, Dateigröße) bildet
   devloop nicht nach; maßgeblich bleibt „existiert im Baum“.
+- **Symlink als CODEOWNERS:** Der Drift-Wächter folgt einem Symlink (Dateisystem), `verify-review`
+  liest per `git show` den Link-Text und sieht nichts gedeckt. Bei `.github/CODEOWNERS` als Symlink
+  ist devloop damit in sich uneinheitlich; ein Symlink auf eine deckende Datei macht den
+  Drift-Wächter grün, das CODEOWNERS-Gate (#14) fängt es beim nächsten T2/T3-PR. Vorbestehende
+  Klasse (Kritiker #32, A4/A8).
+- **`.github/CODEOWNERS` als Verzeichnis:** `check-codeowners` und `init` enden mit
+  EISDIR-Stacktrace statt JSON. Fail-closed, nur die Meldung ist roh.
+- **Groß-/Kleinschreibung:** Auf macOS findet `existsSync` auch `.github/codeowners`, auf dem
+  Linux-Runner nicht. Ein lokaler Lauf kann vom CI-Ergebnis abweichen.
+- **`src/core/guardians.ts`** prüft mit einer eigenen Liste nur, ob irgendeine CODEOWNERS existiert;
+  die Reihenfolge wirkt dort nicht.
