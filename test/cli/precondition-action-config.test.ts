@@ -199,7 +199,7 @@ test("[REQ-CFGBASE-2] Basis-bot-logins [\"bot\"], PR leert die Liste, Approval v
     baseFiles: {
       ".devloop/bot-logins.json": '["bot"]',
       ".devloop/tier-map.json": JSON.stringify({ T2: ["src/**"], T1: ["**"] }),
-      CODEOWNERS: COVER,
+      CODEOWNERS: COVER + "/src/ @alice\n",
     },
     author: "someone",
     change: (w) => {
@@ -251,7 +251,7 @@ test("[REQ-CFGBASE-4] Basis hat .devloop/, aber keine bot-logins.json; PR fuegt 
     baseFiles: {
       ".devloop/bot-logins.json": null,
       ".devloop/tier-map.json": JSON.stringify({ T2: ["src/**"], T1: ["**"] }),
-      CODEOWNERS: COVER,
+      CODEOWNERS: COVER + "/src/ @alice\n",
     },
     author: "someone",
     change: (w) => {
