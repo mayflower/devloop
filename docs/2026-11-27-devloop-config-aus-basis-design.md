@@ -139,3 +139,10 @@ Mutationen werden im Implementierungs-PR gefahren und mit Ergebnis in der PR-Bes
   bleibt. Der PR, der sie hinzufügt, ist jetzt eine Config-Änderung und braucht ein Review.
 - **Owner ohne Schreibrecht, `@OWNER`-Platzhalter, großzügiges CODEOWNERS-Matching und
   Branch-Protection** gelten wie in #4 dokumentiert.
+- **`.devloop` als Symlink in der Basis:** Ersetzt ein PR `.devloop/` durch einen Symlink, ist das
+  eine Config-Änderung und braucht ein CODEOWNER-Review. Ist er gemergt, gibt es in der Basis keinen
+  Config-Pfad mehr als Blob unter `.devloop/`. Jeder spätere PR gilt dann als Erstaufnahme
+  (REQ-CFGBASE-4), und der Config-Gate greift nicht mehr. Voraussetzung ist ein menschlich
+  approvter Merge. Es ist also kein Umgehungspfad ohne Review, sondern ein Rückbau, den der Owner
+  mitträgt. Ein eigenes REQ dafür (`.devloop` in der Basis kein Verzeichnis → `config-invalid`)
+  wäre möglich, ist aber bewusst zurückgestellt.
