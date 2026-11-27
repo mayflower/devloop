@@ -2,7 +2,7 @@
 // mit echter Basis (Branch "base", echtes `git show`). Keine Attrappen.
 import { test, expect, afterEach } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
@@ -555,4 +555,45 @@ test("[REQ-CFGBASE-7] Reihenfolge: Spec-Gate (spec-unguarded) vor Config-Gate", 
   const r = run(repo, { headRef: "devloop/spec/x", diffPaths: ["specs/x/spec.md", ".devloop/protected-globs.json"] });
   expect(r.status).toBe(1);
   expect(r.out.reason).toMatch(/^spec-unguarded/);
+});
+
+// ---------- REQ-CFGBASE-3: Symlink in der Basis ist kein reguelaeres Blob ----------
+
+function symlinkRepo(link: string, target: string, targetContent: string, extra: Record<string, string | null> = {}): string {
+  const repo = makeRepo({ [link]: null, [target.replace("../", "")]: targetContent, ...extra });
+  mkdirSync(dirname(join(repo, link)), { recursive: true });
+  symlinkSync(target, join(repo, link));
+  git(repo, "add", "-A");
+  git(repo, "commit", "-q", "-m", "symlink");
+  return repo;
+}
+
+test("[REQ-CFGBASE-3] Basis-protected-globs ist Symlink auf cfg/pg.json, PR leert das Ziel und aendert stryker.conf.json -> config-invalid", () => {
+  const repo = symlinkRepo(".devloop/protected-globs.json", "../cfg/pg.json", '["**/stryker.conf.*"]');
+  branchWith(repo, { "cfg/pg.json": "[]", "stryker.conf.json": "{}" });
+  const r = run(repo, { diffPaths: ["stryker.conf.json", "cfg/pg.json"], protectedGlobs: [] });
+  expect(r.status).toBe(1);
+  expect(r.out.reason).toMatch(/^config-invalid/);
+});
+
+test("[REQ-CFGBASE-3] Basis-bot-logins ist Symlink auf cfg/bl.json, PR leert das Ziel -> config-invalid", () => {
+  const repo = symlinkRepo(".devloop/bot-logins.json", "../cfg/bl.json", '["bot"]');
+  branchWith(repo, { "cfg/bl.json": "[]" });
+  const r = run(repo, {
+    tier: "T2",
+    prAuthor: "someone",
+    diffPaths: ["src/a.ts"],
+    botLogins: [],
+    reviews: [{ user: "bot", state: "APPROVED", commit_id: "abc123" }],
+  });
+  expect(r.status).toBe(1);
+  expect(r.out.reason).toMatch(/^config-invalid/);
+});
+
+test("[REQ-CFGBASE-3] Basis-tier-map ist ein Symlink -> derive-tier Exit != 0, kein Rueckfall auf den Arbeitsbaum", () => {
+  const repo = symlinkRepo(".devloop/tier-map.json", "../cfg/tm.json", JSON.stringify({ T3: ["src/**"] }));
+  branchWith(repo, { "cfg/tm.json": JSON.stringify({ T1: ["**"] }) });
+  const r = derive(repo, { touched: ["src/a.ts"], baseRef: "base" });
+  expect(r.status).not.toBe(0);
+  expect(r.status).not.toBeNull();
 });
