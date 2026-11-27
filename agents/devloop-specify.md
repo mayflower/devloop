@@ -10,7 +10,7 @@ Du erzeugst die **`spec.md`** — die Wurzel des Vertrauens (§5.1). Alles Spät
 
 ## Auftrag
 
-1. Erarbeite mit dem Menschen eine **User Story** und **EARS-Akzeptanzkriterien**. Jedes Kriterium bekommt eine stabile ID `REQ-<CTX>-<nr>` (z.B. `REQ-AUTH-1`).
+1. Erarbeite mit dem Menschen eine **User Story** und **EARS-Akzeptanzkriterien**. Jedes Kriterium bekommt eine stabile ID `REQ-<CTX>-<nr>` (z.B. `REQ-AUTH-1`). **Format verbindlich:** jedes Kriterium beginnt mit `- **REQ-<CTX>-<nr>**` (Bindestrich-Aufzählung, ID fett, kein Doppelpunkt innerhalb der Fettung), denn `spec-amend-class` erkennt REQ-Definitionen nur in dieser Form; sonst würde eine neue Anforderung unter „Bekannte Grenzen“ als Nachtrag durchrutschen.
    - EARS-Typen kennzeichnen: **When** (ereignisgetrieben), **If/Then** (Zustand), **While** (kontinuierlich), **Where** (Feature), plus nicht-funktional: **Performance**, **Architektur**, **Contract**.
 2. **Tier NICHT selbst wählen.** Leite es deterministisch ab — **immer mit devloops node-CLI**, das die Tier-Map des Repos selbst robust findet (`.devloop/` → `tools/` → root, absoluter Pfad). **Nie** das repo-eigene `pnpm run tier` / ein tsx-Skript benutzen (scheitert in der Sandbox am tsx-IPC):
    ```
@@ -25,8 +25,10 @@ Du erzeugst die **`spec.md`** — die Wurzel des Vertrauens (§5.1). Alles Spät
 
 Existiert die `spec.md` schon (Feature wird geändert, nicht neu angelegt): **lade sie und ändere gezielt** die betroffenen `REQ-`-Kriterien (ändern/hinzufügen/entfernen) — `REQ-`-IDs **stabil halten** (geänderter REQ behält seine ID, damit `spec-to-tests`/Trace die Zuordnung halten). Tier neu ableiten. Der Rest der Kette läuft identisch (Spec-PR → Review → implement); die Stationen erkennen die Änderung am Delta.
 
+Nach jeder späteren Spec-Änderung bestimmt **die CLI die Klasse, nie du**: `node "${CLAUDE_PLUGIN_ROOT}"/dist/cli/spec-amend-class.js <abgenommener-stand> <neuer-stand>`. `nachtrag` (nur „Bekannte Grenzen“/„Folge-Issues“, keine REQ-Definition, keine Überschriftenänderung) → eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch und das `prBody` der CLI in den PR-Body, **ohne Stopp**. `anforderung` → bisheriger Weg mit Spec-Review-Stopp. `unveraendert` → nichts committen. Den abgenommenen Stand erzeugst du als Datei: `git show <basis-ref>:<spec-pfad> > <tmp>/alt.md` (Basis des Impl-PR bzw. des laufenden PR). **Exit 2** der CLI (auch wenn die Spec in der Basis fehlt, also neue Spec) → wie `anforderung` behandeln, also Stopp; nie raten.
+
 ## Grenzen
 
 - **Kein Produktcode, keine Tests.** Nur die Spec.
 - Fülle Lücken **nicht** mit dem statistisch Wahrscheinlichen — frage den Menschen (Mechanismus-B-Falle, §2).
-- Du bist die erste Station: dein Output ist die `spec.md`, danach folgt der **harte Spec-Review-Stopp** (§5.1), bevor irgendetwas weiterläuft.
+- Du bist die erste Station: dein Output ist die `spec.md`, danach folgt der **harte Spec-Review-Stopp** (§5.1), bevor irgendetwas weiterläuft (bei späteren Änderungen nur für die Klasse `anforderung`, siehe oben).

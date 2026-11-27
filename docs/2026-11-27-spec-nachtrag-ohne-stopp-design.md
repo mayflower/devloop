@@ -1,0 +1,137 @@
+# Spec-Nachträge ohne Anforderungsänderung laufen ohne Stopp — Design
+
+> devloop, Issue #27. Heute stoppt jede spätere Spec-Änderung die Kette, auch eine neue Zeile in
+> „Bekannte Grenzen“. In den Ketten zu #4, #12, #19/#20, #23 und #13 waren genau diese Stopps die
+> teuren. Status: **abgenommen** (2026-11-27), mit REQ-Nennungen in Grenzen als Nachtrag.
+
+## Ist-Zustand (main, f0b0bc1)
+
+- **Globale Regel** (`~/.claude/CLAUDE.md`, Abschnitt „Specs“): Jede spätere Spec-Änderung wird vor
+  dem Weiterlaufen zur Abnahme vorgelegt, auch ein kleines Nachschärfen.
+- **devloop-Kette:** Eine Spec-Änderung läuft über `specify` (Amend-Modus) → `spec-to-tests` →
+  Spec-PR auf `devloop/spec/<slug>` → Spec-Review-Stopp (`skills/resume/SKILL.md`, „Changes
+  requested“). Einen Weg für reine Doku-Nachträge gibt es nicht.
+- **CI:** Berührt ein PR einen Spec-Pfad, umgeht `verify-review` die T0/T1-Abkürzung und verlangt
+  CODEOWNER-Deckung in der Basis (REQ-SPECGATE, #4). Ohne menschliches Approval auf dem HEAD mergt
+  der PR nicht. Das gilt auch für den Impl-PR, wenn er die Spec mitändert.
+- **`req-delta`** (`src/core/req-delta.ts`) liefert `{added, changed, removed}` der REQ-IDs zwischen
+  zwei Spec-Ständen, bisher nur für `spec-to-tests` und `spec-to-twin`.
+
+## Entscheidung
+
+Zwei Klassen, und eine deterministische CLI entscheidet die Klasse, nicht der Agent:
+
+- **Anforderungsänderung:** stopppflichtig wie heute.
+- **Doku-Nachtrag:** läuft ohne Stopp weiter. Er steht in einem eigenen, gekennzeichneten Commit und
+  im PR-Body unter einer festen Überschrift. Der Mensch sieht ihn beim Merge, und den Merge-Blick
+  erzwingt CI bereits: Ein PR mit Spec-Pfad im Diff braucht ein menschliches Approval (#4).
+
+Der Detektor ist bewusst **konservativ**. Was er nicht sicher als Nachtrag erkennt, gilt als
+Anforderungsänderung und stoppt. Ein Fehlalarm kostet einen Stopp wie heute; ein Durchrutscher
+kostet ein aufgeweichtes REQ. Eine Grenze darf ein REQ **nennen** (etwa „gilt dann als Erstaufnahme
+(REQ-CFGBASE-4)“), aber keines **definieren**. Ob eine REQ-nennende Grenze das REQ aufweicht,
+entscheidet der Mensch beim Merge (abgenommen 2026-11-27).
+
+## Begriffe
+
+- **Abgenommener Stand:** die Spec-Fassung, die der Mensch zuletzt freigegeben hat. In der
+  devloop-Kette ist das die Spec auf der Basis des Impl-PR (der Spec-PR ist gemergt). In der
+  manuellen Kette ist es der Commit, auf dem die Abnahme erfolgte.
+- **Nachtrags-Abschnitt:** ein Abschnitt (`##` oder tiefer), dessen Überschrift mit „Bekannte
+  Grenzen“ oder „Folge-Issues“ beginnt. Unterabschnitte erben die Zugehörigkeit.
+- **REQ-Definition:** eine Zeile, die (nach führenden Leerzeichen) mit `- **REQ-<CTX>-<nr>**`
+  beginnt, also ein EARS-Kriterium anlegt. Eine Zeile, die eine REQ-ID nur im Fließtext nennt, ist
+  keine REQ-Definition.
+- **Geänderte Zeile:** eine Zeile, die im zeilenweisen Diff zwischen abgenommenem Stand und neuem
+  Stand hinzukommt oder wegfällt. Leerzeilen zählen nicht.
+- **Doku-Nachtrag:** eine Spec-Änderung, bei der jede geänderte Zeile in einem Nachtrags-Abschnitt
+  liegt (im alten Stand für weggefallene, im neuen für hinzugekommene Zeilen), keine geänderte Zeile
+  eine REQ-Definition ist und keine Überschrift hinzukommt, wegfällt oder sich ändert.
+- **Anforderungsänderung:** jede andere Spec-Änderung.
+
+## Anforderungen (EARS)
+
+- **REQ-NACHTRAG-1** *(event-driven)* — Wenn `spec-amend-class <alt> <neu>` zwei Spec-Stände
+  bekommt, soll es `{"klasse":"nachtrag"|"anforderung"|"unveraendert","gruende":[…]}` auf stdout
+  ausgeben und mit Exit 0 enden. `gruende` nennt bei `anforderung` jede auslösende Zeile mit
+  Zeilennummer und Regel.
+- **REQ-NACHTRAG-2** *(ubiquitous)* — Die Klasse soll `nachtrag` genau dann sein, wenn die Änderung
+  ein Doku-Nachtrag nach den Begriffen oben ist, und `unveraendert`, wenn es keine geänderte Zeile
+  gibt.
+- **REQ-NACHTRAG-3** *(unwanted)* — Wenn eine geänderte Zeile in einem Nachtrags-Abschnitt eine
+  REQ-Definition ist, soll die Klasse `anforderung` sein (kein neues oder gestrichenes Kriterium
+  über „Bekannte Grenzen“). Eine geänderte Zeile, die eine REQ-ID nur nennt, bleibt `nachtrag`.
+- **REQ-NACHTRAG-4** *(unwanted)* — Wenn eine Überschrift hinzukommt, wegfällt oder umbenannt wird,
+  soll die Klasse `anforderung` sein (kein Verschieben von Inhalt in einen Nachtrags-Abschnitt per
+  Umbenennung).
+- **REQ-NACHTRAG-5** *(unwanted)* — Wenn eine Eingabedatei fehlt oder nicht lesbar ist, soll die CLI
+  mit Exit 2 und einer Meldung auf stderr enden, ohne Klasse auf stdout.
+- **REQ-NACHTRAG-6** *(event-driven)* — Wenn die Klasse `nachtrag` ist, soll die Ausgabe zusätzlich
+  `prBody` enthalten: einen Markdown-Block mit der festen Überschrift `## Spec-Nachträge (ohne
+  Stopp)` und jeder hinzugekommenen Zeile wörtlich.
+- **REQ-NACHTRAG-7** *(ubiquitous)* — `skills/loop/SKILL.md`, `skills/resume/SKILL.md` und
+  `agents/devloop-specify.md` sollen den Nachtragsweg beschreiben: Klasse per CLI bestimmen, bei
+  `nachtrag` eigener Commit mit Präfix `docs(spec-nachtrag):` auf dem laufenden Branch und
+  `prBody`-Block in den PR-Body, ohne Stopp; bei `anforderung` der bisherige Weg mit Spec-Review-
+  Stopp. Die Klasse wählt nie der Agent selbst.
+- **REQ-NACHTRAG-8** *(ubiquitous)* — Der Abschnitt „Specs“ in `~/.claude/CLAUDE.md` soll die zwei
+  Klassen und den Verweis auf die CLI tragen. Diese Datei liegt außerhalb des Repos; die Änderung
+  wird dem Menschen als eigener Diff vorgelegt und erst nach seinem Okay geschrieben.
+
+## Umsetzung (Skizze, nicht bindend)
+
+- Kern `src/core/spec-amend.ts`: Zeilen-Diff (LCS reicht, Specs sind klein), Abschnittszuordnung je
+  Zeile über die letzte Überschrift.
+- CLI `src/cli/spec-amend-class.ts`, Muster wie `req-delta`.
+- Versionssprung **v0.12.0** (neue CLI, neue Kettenregel).
+
+## Detektoren (Wirkung) und Mutationsproben
+
+CLI-Tests gegen `dist/` mit echten Spec-Dateien im Temp-Verzeichnis.
+
+| Fall | Erwartung | tötet Mutation |
+|---|---|---|
+| neue Zeile unter „Bekannte Grenzen“ ohne `REQ-` | `nachtrag`, `prBody` enthält die Zeile wörtlich | Klasse immer `anforderung` |
+| neue Zeile unter „Folge-Issues“ | `nachtrag` | nur „Bekannte Grenzen“ erlaubt |
+| Zeile in Unterabschnitt `###` von „Bekannte Grenzen“ | `nachtrag` | Zuordnung nur über `##` |
+| neue Grenze nennt `REQ-X-4` im Fließtext | `nachtrag` | jede `REQ-`-Nennung gilt als Definition |
+| neue Zeile `- **REQ-X-9** …` unter „Bekannte Grenzen“ | `anforderung`, Grund nennt die Zeile | Definitions-Prüfung entfernt |
+| Grenze gestrichen (Zeile weg, kein `REQ-`) | `nachtrag` | jede weggefallene Zeile gilt als Anforderungsänderung |
+| Wortlaut eines REQ geändert | `anforderung` | Abschnitt „Anforderungen“ als Nachtrags-Abschnitt gewertet |
+| Zeile in „Begriffe“ oder „Detektoren“ geändert | `anforderung` | Abschnittsprüfung entfernt |
+| REQ-Zeile aus „Anforderungen“ nach „Bekannte Grenzen“ verschoben | `anforderung` | weggefallene Zeilen dem neuen Stand zugeordnet |
+| Überschrift „Detektoren“ in „Bekannte Grenzen 2“ umbenannt | `anforderung` | Überschriften-Prüfung entfernt |
+| nur Leerzeilen geändert | `unveraendert` | Leerzeilen zählen |
+| identische Dateien | `unveraendert` | — |
+| alte Datei fehlt | Exit 2, stdout leer | Fehler als `unveraendert` geschluckt |
+| Realfall #13: Spec vor und nach dem F3-Nachtrag (nennt REQ-CFGBASE-4) | `nachtrag` | — (Realfall) |
+
+Mutationen werden im Implementierungs-PR gefahren und mit Ergebnis in der PR-Beschreibung
+dokumentiert. REQ-NACHTRAG-7 und 8 sind Doku; ihr Detektor ist die Abnahme des Diffs durch den
+Menschen, kein Quelltext-Wächter.
+
+## Bekannte Grenzen (dokumentiert, keine eigene Runde)
+
+- **Aufweichen über eine Grenze:** Eine Grenze wie „X wird nicht geprüft“ läuft als Nachtrag durch,
+  auch wenn sie ein REQ nennt. Gegenprobe ist der Merge-Blick: Die Zeile steht wörtlich unter der festen
+  Überschrift, und CI verlangt für jeden PR mit Spec-Pfad ein menschliches Approval (#4).
+- **Missbrauch als Ablage:** Ein Agent kann eine unbequeme Lücke als Grenze eintragen, statt sie zu
+  beheben. Heute fängt das der Stopp, danach nur der Merge-Blick. Die Abbruchbedingung der
+  Critic-Kette bleibt unverändert.
+- **Kein CI-Zwang auf Klasse oder PR-Body:** CI prüft nicht, ob eine Spec-Änderung auf dem Impl-PR
+  ein Nachtrag ist oder ob der `prBody`-Block im PR steht. Das Approval-Erfordernis aus #4 bleibt die
+  harte Grenze. Ein CI-Check `spec-amend-class` auf `devloop/<slug>` wäre ein Folge-Issue.
+- **Status- und Ist-Zustand-Zeilen** zählen nicht als Nachtrag. Ein nachgezogener Ist-Zustand stoppt
+  weiter; das ist der konservative Teil der Entscheidung.
+- **REQ-Definitionen nur in kanonischer Form:** Nur `- **REQ-<CTX>-<nr>**` gilt als REQ-Definition.
+  Ein neues Kriterium unter „Bekannte Grenzen“ in anderer Form (ohne Fettung, mit `*`- oder
+  Nummern-Aufzählung, Doppelpunkt in der Fettung) läuft als Nachtrag durch, obwohl `req-delta` es
+  als neues REQ meldet. `devloop-specify` schreibt die kanonische Form vor; alle REQs in `docs/`
+  nutzen sie. Ein Abgleich mit `req-delta` (added/removed nicht leer ⇒ `anforderung`) wäre ein
+  Folge-Issue.
+- **Exotisches Markdown:** Setext-Überschriften und eingerückte `#`-Überschriften (1–3 Leerzeichen)
+  gelten nicht als Überschrift; neu angelegt laufen sie als Nachtrag durch. `#`-Zeilen in
+  Code-Fences gelten als Überschrift; das kostet höchstens einen Fehlalarm.
+- **`req-delta` liest REQ-Nennungen in Grenzen als REQ-Änderung:** Seine Map behält die letzte Zeile,
+  die eine ID nennt. Beim Nachtrag aus #13 meldet es `changed: ["REQ-CFGBASE-4"]`. Im Nachtragsweg
+  läuft `spec-to-tests` nicht, deshalb ohne Folgen hier; Folge-Issue zu `req-delta`.
