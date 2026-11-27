@@ -8,7 +8,8 @@
 //    "# REQ-…". Plain lines only count in a spec without any bold definition;
 //  - never inside "Bekannte Grenzen" / "Folge-Issues" sections (shared with spec-amend-class).
 // A criterion's text is its whole definition block (definition line + continuation lines up to
-// the next blank line, heading, definition or unindented list item), whitespace-normalised.
+// the next heading, definition or unindented list item, or a blank line followed by an unindented
+// line; indented paragraphs after a blank line belong to the block), whitespace-normalised.
 // If an id is defined more than once, the first definition wins.
 
 import { HEADING, nachtragFlags } from "./spec-sections.js";
@@ -46,14 +47,22 @@ function parseReqs(spec: string): Map<string, string> {
   });
 
   const useBold = defs.some((d) => d.bold);
-  const isDefStart = new Set(defs.map((d) => d.start));
+  // Only definitions of the active form end a block; plain lines in a bold spec are mentions.
+  const isDefStart = new Set(defs.filter((d) => d.bold === useBold).map((d) => d.start));
   const reqs = new Map<string, string>();
   for (const d of defs) {
     if (d.bold !== useBold || reqs.has(d.id)) continue;
     const parts = [d.rest.replace(/^\s*[:\-—]?/, "")];
     for (let j = d.start + 1; j < lines.length; j++) {
       const l = lines[j];
-      if (l.trim() === "" || HEADING.test(l) || isDefStart.has(j) || LIST_ITEM.test(l)) break;
+      if (l.trim() === "") {
+        // A blank line ends the block unless the next non-blank line is indented.
+        let k = j + 1;
+        while (k < lines.length && lines[k].trim() === "") k++;
+        if (k >= lines.length || !/^[ \t]/.test(lines[k])) break;
+        continue;
+      }
+      if (HEADING.test(l) || isDefStart.has(j) || LIST_ITEM.test(l)) break;
       parts.push(l);
     }
     reqs.set(d.id, normalize(parts.join("\n")));
